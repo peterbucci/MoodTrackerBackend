@@ -12,7 +12,7 @@ export function applySchema(db) {
     id TEXT PRIMARY KEY,
     userId TEXT NOT NULL,
     createdAt INTEGER NOT NULL,
-    source TEXT NOT NULL, -- 'subscription' | 'manual' | 'phone-request'
+    source TEXT NOT NULL, -- 'subscription' | 'phone-request'
     data TEXT NOT NULL
   );
 
@@ -29,6 +29,21 @@ export function applySchema(db) {
   CREATE TABLE IF NOT EXISTS meta (
     key TEXT PRIMARY KEY,
     value TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS requests (
+    id TEXT PRIMARY KEY,
+    userId TEXT NOT NULL,
+    createdAt INTEGER NOT NULL,
+    status TEXT NOT NULL,         -- 'pending' | 'fulfilled' | 'canceled'
+    featureId TEXT,               -- set when fulfilled (many requests -> one feature)
+    source TEXT NOT NULL DEFAULT 'phone' -- or 'manual' later
+  );
+
+  CREATE TABLE IF NOT EXISTS sync_log (
+    id TEXT PRIMARY KEY,
+    userId TEXT NOT NULL,
+    createdAt INTEGER NOT NULL
   );
   `);
 }

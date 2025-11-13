@@ -4,6 +4,7 @@ import { rawJson } from "./middleware/rawJson.js";
 import oauthRoutes from "./routes/oauth.js";
 import webhookRoutes from "./routes/webhook.js";
 import featuresRoutes from "./routes/features.js";
+import requestRoutes from "./routes/requests.js";
 
 export function createServer() {
   const app = express();
@@ -21,6 +22,7 @@ export function createServer() {
   app.use(oauthRoutes);
   app.use(webhookRoutes);
   app.use(featuresRoutes);
+  app.use(requestRoutes);
 
   return app;
 }

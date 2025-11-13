@@ -1,4 +1,3 @@
-// Generic coalescing window per key (e.g., userId)
 const lastRun = new Map();
 
 /**

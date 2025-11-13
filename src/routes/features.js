@@ -5,7 +5,6 @@ import {
   getFeature,
   latestFeatureForUser,
 } from "../db/queries/features.js";
-import { runFetchForUser } from "../jobs/fetchJob.js";
 
 const router = express.Router();
 
@@ -23,18 +22,6 @@ router.get("/features/:id", (req, res) => {
   const it = getFeature.get(req.params.id, row.userId);
   if (!it) return res.status(404).json({ error: "not found" });
   res.json({ id: it.id, createdAt: it.createdAt, data: JSON.parse(it.data) });
-});
-
-// Manual build-now (dev)
-router.post("/features/build-now", async (req, res) => {
-  const tok = getAnyTokenRow.get();
-  if (!tok)
-    return res
-      .status(400)
-      .json({ error: "link a Fitbit user first (/oauth/start)" });
-  const out = await runFetchForUser(tok.userId);
-  const latest = latestFeatureForUser.get(tok.userId);
-  res.json({ ...out, latest });
 });
 
 // Small health/debug endpoints

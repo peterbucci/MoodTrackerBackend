@@ -1,12 +1,14 @@
 import express from "express";
-import { verifyWebhookSignature } from "../services/fitbit/webhookVerify.js";
+import { verifyFitbitSignature } from "../services/fitbit/verifySig.js";
 import { scheduleCoalesced } from "../jobs/coalesce.js";
-import { runFetchForUser } from "../jobs/fetchJob.js";
 import { config } from "../config/index.js";
+import { logSync } from "../db/queries/sync.js";
+import { pendingCount } from "../db/queries/requests.js";
+import { tryFulfillPending } from "../jobs/orchestrator.js";
+import { v4 as uuidv4 } from "uuid";
 
 const router = express.Router();
 
-// Verify endpoint
 router.get("/fitbit/webhook", (req, res) => {
   const verify = req.query.verify;
   if (verify && verify === config.FITBIT_VERIFICATION_CODE) {
@@ -15,17 +17,23 @@ router.get("/fitbit/webhook", (req, res) => {
   return res.status(404).send("Not Found");
 });
 
-// Notifications
 router.post("/fitbit/webhook", async (req, res) => {
   try {
     const hdr = req.get("X-Fitbit-Signature") || "";
-    const { ok } = verifyWebhookSignature(hdr, req.rawBodyBuffer, req.rawBody);
+    const ok = verifyFitbitSignature(hdr, req.rawBodyBuffer);
 
-    // While you’re still validating variants, ACK 204 to stop retries.
-    // Later, enforce `ok` === true and respond 403 when invalid.
+    // ACK quickly (Fitbit requires fast response). Optionally reject if strict.
+    if (config.STRICT_WEBHOOK_VERIFY === "1" && !ok) {
+      return res.status(403).send(); // enforce in prod when ready
+    }
     res.status(204).send();
 
-    // Normalize notifications -> owners
+    if (!ok) {
+      console.warn("[fitbit-signature NO MATCH] continuing in non-strict mode");
+      // Can early-return here if you prefer to drop unverified payloads even in dev.
+    }
+
+    // Normalize body → ownerIds
     const body = req.body;
     const notifications = Array.isArray(body)
       ? body
@@ -38,14 +46,27 @@ router.post("/fitbit/webhook", async (req, res) => {
       : [];
 
     const owners = new Set(notifications.map((n) => n.ownerId).filter(Boolean));
+
     for (const userId of owners) {
-      scheduleCoalesced(userId, config.FETCH_DEBOUNCE_MS, () => {
-        runFetchForUser(userId);
-      });
+      // 1) Log the sync
+      logSync.run({ id: uuidv4(), userId, createdAt: Date.now() });
+
+      // 2) Count queue and log it
+      const pc = pendingCount.get(userId)?.c ?? 0;
+      console.log(`[sync] user=${userId} pendingRequests=${pc}`);
+
+      // 3) Only fetch if there are pending requests. Coalesce to avoid storms.
+      if (pc > 0) {
+        scheduleCoalesced(userId, config.FETCH_DEBOUNCE_MS, async () => {
+          const out = await tryFulfillPending(userId, {
+            allowWithoutRecentSync: true,
+          });
+          console.log(`[sync->fulfill] user=${userId}`, out);
+        });
+      }
     }
-  } catch (e) {
-    // Best effort ACK to avoid storms
-    res.status(204).send();
+  } catch {
+    // Best-effort ACK already sent
   }
 });
 
