@@ -69,6 +69,34 @@ export function sedentaryMinsLast3hFromSteps(series, now = dayjs()) {
   return mins;
 }
 
+// Define "active" as >= 60 steps in a minute, then:
+// azmSpike30m = activeMinutes(last 30m) - activeMinutes(previous 30m)
+export function azmSpike30mFromSteps(series, now = dayjs()) {
+  const threshold = 60; // steps per minute to count as "active"
+  const end = now;
+  const mid = now.subtract(30, "minute");
+  const start = now.subtract(60, "minute");
+
+  let activePrev30 = 0;
+  let activeLast30 = 0;
+
+  for (const p of series || []) {
+    const t = dayjs(p.time);
+    if (!t.isAfter(start) || t.isAfter(end)) continue;
+    const steps = p.steps || 0;
+    const isActive = steps >= threshold;
+    if (!isActive) continue;
+
+    if (t.isAfter(start) && !t.isAfter(mid)) {
+      activePrev30 += 1;
+    } else if (t.isAfter(mid) && !t.isAfter(end)) {
+      activeLast30 += 1;
+    }
+  }
+
+  return activeLast30 - activePrev30;
+}
+
 export function featuresFromSteps(series, now = dayjs()) {
   const f = {};
   f.stepsLast5m = sumWindow(series, now, 5);

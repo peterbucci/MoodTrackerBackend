@@ -16,6 +16,21 @@ export async function fetchStepsIntraday(accessToken, dateISO) {
   return series;
 }
 
+export async function fetchHeartIntraday(accessToken, dateISO) {
+  const url = `https://api.fitbit.com/1/user/-/activities/heart/date/${dateISO}/1d/1min.json`;
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!r.ok)
+    throw new Error(`HeartIntraday HTTP ${r.status}: ${await r.text()}`);
+  const j = await r.json();
+  const dataset = j["activities-heart-intraday"]?.dataset || [];
+  return dataset.map((d) => ({
+    time: `${dateISO}T${d.time}:00`,
+    hr: d.value ? Number(d.value) : null,
+  }));
+}
+
 export async function fetchDailySummary(accessToken, dateISO) {
   const url = `https://api.fitbit.com/1/user/-/activities/date/${dateISO}.json`;
   const r = await fetch(url, {

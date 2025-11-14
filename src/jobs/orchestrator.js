@@ -8,6 +8,7 @@ import { lastSyncTs } from "../db/queries/sync.js";
 import { insertFeature } from "../db/queries/features.js";
 import {
   fetchStepsIntraday,
+  fetchHeartIntraday,
   fetchDailySummary,
   fetchCaloriesIntraday,
   fetchMostRecentExercise,
@@ -59,6 +60,7 @@ export async function tryFulfillPending(
     // 🔹 Fetch Fitbit once per date (4 calls total for Tier-1 + steps)
     const [
       stepsSeries,
+      heartSeries,
       dailyJson,
       caloriesJson,
       exerciseJson,
@@ -66,6 +68,7 @@ export async function tryFulfillPending(
       rhr7dJson,
     ] = await Promise.all([
       fetchStepsIntraday(accessToken, dateStr),
+      fetchHeartIntraday(accessToken, dateStr),
       fetchDailySummary(accessToken, dateStr),
       fetchCaloriesIntraday(accessToken, dateStr),
       fetchMostRecentExercise(accessToken, dateStr),
@@ -79,6 +82,7 @@ export async function tryFulfillPending(
 
       const feats = await buildAllFeatures({
         stepsSeries,
+        heartSeries,
         dailyJson,
         caloriesJson,
         exerciseJson,
