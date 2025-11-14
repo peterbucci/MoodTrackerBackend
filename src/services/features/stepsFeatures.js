@@ -57,6 +57,18 @@ function slopeLast60(series, now) {
   return den === 0 ? 0 : (num / den) * 60 * 1000; // per-minute
 }
 
+// Sedentary minutes in last 3h using steps=0 proxy
+export function sedentaryMinsLast3hFromSteps(series, now = dayjs()) {
+  const start = now.subtract(180, "minute");
+  let mins = 0;
+  for (const p of series) {
+    const t = dayjs(p.time);
+    if (t.isAfter(start) && !t.isAfter(now))
+      mins += (p.steps || 0) === 0 ? 1 : 0;
+  }
+  return mins;
+}
+
 export function featuresFromSteps(series, now = dayjs()) {
   const f = {};
   f.stepsLast5m = sumWindow(series, now, 5);

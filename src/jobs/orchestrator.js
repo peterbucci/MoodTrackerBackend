@@ -6,12 +6,17 @@ import {
 } from "../db/queries/requests.js";
 import { lastSyncTs } from "../db/queries/sync.js";
 import { insertFeature } from "../db/queries/features.js";
-import { fetchStepsIntraday } from "../services/fitbit/api.js";
+import {
+  fetchStepsIntraday,
+  fetchDailySummary,
+  fetchCaloriesIntraday,
+  fetchMostRecentExercise,
+} from "../services/fitbit/api.js";
 import { getAccessToken } from "../services/fitbit/oauth.js";
 import { buildAllFeatures } from "../services/features/index.js";
 import { v4 as uuidv4 } from "uuid";
 
-const REQUIRE_SYNC_WITHIN_MS = 1; // 30m
+const REQUIRE_SYNC_WITHIN_MS = 30 * 60 * 1000; // 30m is sane; you can tune it
 
 export async function tryFulfillPending(
   userId,
@@ -32,13 +37,12 @@ export async function tryFulfillPending(
     };
   }
 
-  // 1) Load all pending requests with their anchor timestamps
   const pending = listPendingDetailed.all(userId);
   if (!pending?.length)
     return { ok: true, didFetch: false, reason: "no-pending" };
 
-  // 2) Group requests by anchor date so we fetch intraday once per date
-  const groups = new Map(); // dateStr -> array of requests
+  // Group by date (YYYY-MM-DD)
+  const groups = new Map();
   for (const r of pending) {
     const anchor = dayjs(r.createdAt);
     const dateStr = anchor.format("YYYY-MM-DD");
@@ -46,16 +50,30 @@ export async function tryFulfillPending(
     groups.get(dateStr).push(r);
   }
 
-  // 3) Fetch intraday per date and fulfill each request with its own features
   const accessToken = await getAccessToken(userId);
   let total = 0;
-  for (const [dateStr, requests] of groups.entries()) {
-    const stepsSeries = await fetchStepsIntraday(accessToken, dateStr);
 
+  for (const [dateStr, requests] of groups.entries()) {
+    // 🔹 Fetch Fitbit once per date (4 calls total for Tier-1 + steps)
+    const [stepsSeries, dailyJson, caloriesJson, exerciseJson] =
+      await Promise.all([
+        fetchStepsIntraday(accessToken, dateStr),
+        fetchDailySummary(accessToken, dateStr),
+        fetchCaloriesIntraday(accessToken, dateStr),
+        fetchMostRecentExercise(accessToken, dateStr),
+      ]);
+
+    // Fulfill each request with its own anchor time using the SAME pre-fetched blobs
     for (const req of requests) {
       const anchor = dayjs(req.createdAt);
-      // Build features with "now" anchored to the request time
-      const feats = await buildAllFeatures({ stepsSeries, now: anchor });
+      const feats = await buildAllFeatures({
+        stepsSeries,
+        dailyJson,
+        caloriesJson,
+        exerciseJson,
+        dateISO: dateStr,
+        now: anchor,
+      });
 
       const featureId = uuidv4();
       insertFeature.run({

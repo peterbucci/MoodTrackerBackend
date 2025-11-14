@@ -9,8 +9,10 @@ export function verifyFitbitSignature(headerSignature, rawBodyBuffer) {
   if (!headerSignature || !rawBodyBuffer) {
     return { ok: false, reason: "missing header/body" };
   }
+
   // Fitbit: signing key is CLIENT_SECRET + '&'
   const signingKey = Buffer.from(`${config.FITBIT_CLIENT_SECRET}&`, "utf8");
+
   const expected = crypto
     .createHmac("sha1", signingKey)
     .update(rawBodyBuffer)
@@ -18,6 +20,6 @@ export function verifyFitbitSignature(headerSignature, rawBodyBuffer) {
 
   // timing-safe compare
   const a = Buffer.from(expected);
-  const b = Buffer.from(header);
+  const b = Buffer.from(headerSignature);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }

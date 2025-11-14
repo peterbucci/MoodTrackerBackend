@@ -22,16 +22,11 @@ router.post("/fitbit/webhook", async (req, res) => {
     const hdr = req.get("X-Fitbit-Signature") || "";
     const ok = verifyFitbitSignature(hdr, req.rawBodyBuffer);
 
-    // ACK quickly (Fitbit requires fast response). Optionally reject if strict.
-    if (config.STRICT_WEBHOOK_VERIFY === "1" && !ok) {
-      return res.status(403).send(); // enforce in prod when ready
+    // ACK quickly (Fitbit requires fast response).
+    if (!ok) {
+      return res.status(403).send();
     }
     res.status(204).send();
-
-    if (!ok) {
-      console.warn("[fitbit-signature NO MATCH] continuing in non-strict mode");
-      // Can early-return here if you prefer to drop unverified payloads even in dev.
-    }
 
     // Normalize body → ownerIds
     const body = req.body;

@@ -18,7 +18,18 @@ router.get("/oauth/start", (req, res) => {
     client_id: config.FITBIT_CLIENT_ID,
     response_type: "code",
     redirect_uri: config.FITBIT_REDIRECT_URI,
-    scope: "activity",
+    scope: [
+      "activity",
+      "heartrate",
+      "sleep",
+      "nutrition",
+      "profile",
+      "settings",
+      "weight",
+      "respiratory_rate",
+      "temperature",
+      "oxygen_saturation",
+    ].join(" "),
     include_granted_scopes: "true",
   });
   if (force) params.set("prompt", "consent");
@@ -51,6 +62,7 @@ router.get("/oauth/callback", async (req, res) => {
       expiresAt: Date.now() + t.expires_in * 1000,
     });
     await subscribeActivities(t.access_token);
+
     res.send(
       `<pre>Linked Fitbit user ${userId}. Subscribed to activities. You can close this.</pre>`
     );

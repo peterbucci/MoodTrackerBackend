@@ -1,10 +1,6 @@
 import express from "express";
 import { getAnyUser, getAnyTokenRow } from "../db/queries/tokens.js";
-import {
-  listFeatures,
-  getFeature,
-  latestFeatureForUser,
-} from "../db/queries/features.js";
+import { listFeatures, getFeature } from "../db/queries/features.js";
 
 const router = express.Router();
 

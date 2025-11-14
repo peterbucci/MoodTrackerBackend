@@ -13,3 +13,34 @@ export async function fetchStepsIntraday(accessToken, dateISO) {
   }));
   return series;
 }
+
+export async function fetchDailySummary(accessToken, dateISO) {
+  const url = `https://api.fitbit.com/1/user/-/activities/date/${dateISO}.json`;
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!r.ok)
+    throw new Error(`DailySummary HTTP ${r.status}: ${await r.text()}`);
+  return r.json(); // { summary: {...}, ... }
+}
+
+export async function fetchCaloriesIntraday(accessToken, dateISO) {
+  const url = `https://api.fitbit.com/1/user/-/activities/calories/date/${dateISO}/1d/1min.json`;
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!r.ok)
+    throw new Error(`CaloriesIntraday HTTP ${r.status}: ${await r.text()}`);
+  return r.json(); // { "activities-calories-intraday": { dataset: [...] } }
+}
+
+export async function fetchMostRecentExercise(accessToken, dateISO) {
+  // Most recent activity before or on this date
+  const url = `https://api.fitbit.com/1/user/-/activities/list.json?beforeDate=${dateISO}&sort=desc&offset=0&limit=1`;
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!r.ok)
+    throw new Error(`ExerciseList HTTP ${r.status}: ${await r.text()}`);
+  return r.json(); // { activities: [ { startTime, duration, ... } ] }
+}
