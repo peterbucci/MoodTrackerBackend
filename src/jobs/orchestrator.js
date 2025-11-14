@@ -14,6 +14,7 @@ import {
   fetchMostRecentExercise,
   fetchSleepRange,
   fetchRestingHr7d,
+  fetchSteps7d,
 } from "../services/fitbit/api.js";
 import { getAccessToken } from "../services/fitbit/oauth.js";
 import { buildAllFeatures } from "../services/features/index.js";
@@ -66,6 +67,7 @@ export async function tryFulfillPending(
       exerciseJson,
       sleepJson,
       rhr7dJson,
+      steps7dJson,
     ] = await Promise.all([
       fetchStepsIntraday(accessToken, dateStr),
       fetchHeartIntraday(accessToken, dateStr),
@@ -74,6 +76,7 @@ export async function tryFulfillPending(
       fetchMostRecentExercise(accessToken, dateStr),
       fetchSleepRange(accessToken, dateStr, 7),
       fetchRestingHr7d(accessToken, dateStr),
+      fetchSteps7d(accessToken, dateStr),
     ]);
 
     // Fulfill each request with its own anchor time using the SAME pre-fetched blobs
@@ -88,6 +91,7 @@ export async function tryFulfillPending(
         exerciseJson,
         sleepJson,
         rhr7dJson,
+        steps7dJson,
         dateISO: dateStr,
         now: anchor,
       });

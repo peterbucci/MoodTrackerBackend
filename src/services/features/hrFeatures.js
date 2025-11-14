@@ -22,11 +22,6 @@ function avgWindow(series, now, minutes, offsetMinutes = 0) {
 }
 
 // hrZNow: how elevated current HR is vs resting baseline.
-// We use a *relative* measure instead of a statistical z-score, because
-// restingHR over 7 days often has tiny variance (≈0–1 bpm), which makes
-// z-scores explode to huge values. This metric is:
-//    (hrNow - meanRHR) / meanRHR
-// So:
 //   0.0   → at baseline
 //   0.2   → 20% above resting
 //   -0.1  → 10% below resting

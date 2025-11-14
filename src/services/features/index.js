@@ -13,6 +13,12 @@ import {
 import { featuresFromSleepRange } from "./sleepFeatures.js";
 import { restingHr7dTrendFromSeries } from "./restingHrFeatures.js";
 import { featuresFromHeartIntraday } from "./hrFeatures.js";
+import {
+  stepsZTodayFromTimeseries,
+  activityInertiaFromSteps7d,
+  sleepDebtHrsFromSleepRange,
+  recoveryIndexFromSignals,
+} from "./personalFeatures.js";
 
 /**
  * Simple composite acute index with correct directions:
@@ -40,12 +46,13 @@ function computeAcuteArousalIndex({
  */
 export async function buildAllFeatures({
   stepsSeries,
-  heartSeries, // NEW: from fetchHeartIntraday()
+  heartSeries, // from fetchHeartIntraday()
   dailyJson, // from fetchDailySummary()
   caloriesJson, // from fetchCaloriesIntraday()
   exerciseJson, // from fetchMostRecentExercise()
   sleepJson, // from fetchSleepRange()
   rhr7dJson, // from fetchRestingHr7d()
+  steps7dJson, // from fetchSteps7d() for Tier 4
   dateISO, // YYYY-MM-DD (for intraday alignment)
   now = dayjs(),
 }) {
@@ -91,6 +98,21 @@ export async function buildAllFeatures({
     azmSpike30m,
   });
 
+  // --- Tier 4: Personal Trends & Baselines ---
+
+  // 1) stepsZToday + activityInertia from 7d steps timeseries
+  const stepsZToday = stepsZTodayFromTimeseries(steps7dJson);
+  const activityInertia = activityInertiaFromSteps7d(steps7dJson);
+
+  // 2) sleepDebtHrs from 7d sleep range (reuse same blob)
+  const sleepDebtHrs = sleepDebtHrsFromSleepRange(sleepJson, now);
+
+  // 3) recoveryIndex from RHR trend + sleep debt
+  const recoveryIndex = recoveryIndexFromSignals({
+    restingHR7dTrend,
+    sleepDebtHrs,
+  });
+
   return {
     // Acute + Tier 1
     ...stepFeats,
@@ -123,5 +145,11 @@ export async function buildAllFeatures({
     bedtimeStdDev7d: sleepFeats.bedtimeStdDev7d,
     restingHR7dTrend,
     notes: sleepFeats.notes, // array of strings
+
+    // --- Tier 4: Personal trends / baselines ---
+    stepsZToday,
+    activityInertia,
+    sleepDebtHrs,
+    recoveryIndex,
   };
 }

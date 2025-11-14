@@ -2,10 +2,7 @@ import dayjs from "dayjs";
 
 /**
  * Extract "last night" sleep + 7-day bedtime variability from the
- * combined sleep range JSON.
- *
- * Assumes Fitbit's /sleep/date/start/end.json shape:
- *   { sleep: [ { isMainSleep, startTime, endTime, duration, efficiency, minutesAsleep, minutesAwake, levels: { summary: { rem, deep, light } } } ] }
+ * combined sleep range.
  */
 export function featuresFromSleepRange(sleepJson, now = dayjs()) {
   const sleepArr = Array.isArray(sleepJson?.sleep) ? sleepJson.sleep : [];

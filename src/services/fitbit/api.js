@@ -1,6 +1,5 @@
 import fetch from "node-fetch";
 import dayjs from "dayjs";
-import { config } from "../../config/index.js";
 
 export async function fetchStepsIntraday(accessToken, dateISO) {
   const url = `https://api.fitbit.com/1/user/-/activities/steps/date/${dateISO}/1d/1min.json`;
@@ -86,6 +85,23 @@ export async function fetchRestingHr7d(accessToken, endDateISO) {
   });
   if (!r.ok) {
     throw new Error(`RHR7d HTTP ${r.status}: ${await r.text()}`);
+  }
+  return r.json();
+}
+
+/**
+ * 7-day daily steps timeseries ending on endDateISO.
+ * Shape: { "activities-steps": [ { dateTime: "YYYY-MM-DD", value: "1234" }, ... ] }
+ */
+export async function fetchSteps7d(accessToken, endDateISO) {
+  // Fitbit: /1/user/-/activities/steps/date/[date]/7d.json
+  const url = `https://api.fitbit.com/1/user/-/activities/steps/date/${endDateISO}/7d.json`;
+
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!r.ok) {
+    throw new Error(`Steps7d HTTP ${r.status}: ${await r.text()}`);
   }
   return r.json();
 }
