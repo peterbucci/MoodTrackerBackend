@@ -11,12 +11,14 @@ import {
   fetchDailySummary,
   fetchCaloriesIntraday,
   fetchMostRecentExercise,
+  fetchSleepRange,
+  fetchRestingHr7d,
 } from "../services/fitbit/api.js";
 import { getAccessToken } from "../services/fitbit/oauth.js";
 import { buildAllFeatures } from "../services/features/index.js";
 import { v4 as uuidv4 } from "uuid";
 
-const REQUIRE_SYNC_WITHIN_MS = 30 * 60 * 1000; // 30m is sane; you can tune it
+const REQUIRE_SYNC_WITHIN_MS = 1;
 
 export async function tryFulfillPending(
   userId,
@@ -55,22 +57,33 @@ export async function tryFulfillPending(
 
   for (const [dateStr, requests] of groups.entries()) {
     // 🔹 Fetch Fitbit once per date (4 calls total for Tier-1 + steps)
-    const [stepsSeries, dailyJson, caloriesJson, exerciseJson] =
-      await Promise.all([
-        fetchStepsIntraday(accessToken, dateStr),
-        fetchDailySummary(accessToken, dateStr),
-        fetchCaloriesIntraday(accessToken, dateStr),
-        fetchMostRecentExercise(accessToken, dateStr),
-      ]);
+    const [
+      stepsSeries,
+      dailyJson,
+      caloriesJson,
+      exerciseJson,
+      sleepJson,
+      rhr7dJson,
+    ] = await Promise.all([
+      fetchStepsIntraday(accessToken, dateStr),
+      fetchDailySummary(accessToken, dateStr),
+      fetchCaloriesIntraday(accessToken, dateStr),
+      fetchMostRecentExercise(accessToken, dateStr),
+      fetchSleepRange(accessToken, dateStr, 7),
+      fetchRestingHr7d(accessToken, dateStr),
+    ]);
 
     // Fulfill each request with its own anchor time using the SAME pre-fetched blobs
     for (const req of requests) {
       const anchor = dayjs(req.createdAt);
+
       const feats = await buildAllFeatures({
         stepsSeries,
         dailyJson,
         caloriesJson,
         exerciseJson,
+        sleepJson,
+        rhr7dJson,
         dateISO: dateStr,
         now: anchor,
       });

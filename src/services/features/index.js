@@ -6,6 +6,8 @@ import {
 import { featuresFromDailySummary } from "./dailyFeatures.js";
 import { caloriesOutLast3hFromIntraday } from "./calorieFeatures.js";
 import { timeSinceLastExerciseMinFromList } from "./exerciseFeatures.js";
+import { featuresFromSleepRange } from "./sleepFeatures.js";
+import { restingHr7dTrendFromSeries } from "./restingHrFeatures.js";
 
 /**
  * Pure combiner: NO network calls here.
@@ -17,9 +19,13 @@ export async function buildAllFeatures({
   dailyJson, // from fetchDailySummary()
   caloriesJson, // from fetchCaloriesIntraday()
   exerciseJson, // from fetchMostRecentExercise()
+  sleepJson, // from fetchSleepRange()
+  rhr7dJson, // from fetchRestingHr7d()
   dateISO, // YYYY-MM-DD (for intraday alignment)
   now = dayjs(),
 }) {
+  // --- Tier A + Tier 1 ---
+
   // Step-derived (already implemented)
   const stepFeats = featuresFromSteps(stepsSeries, now);
   const sedentaryMinsLast3h = sedentaryMinsLast3hFromSteps(stepsSeries, now);
@@ -40,7 +46,12 @@ export async function buildAllFeatures({
     now
   );
 
+  // --- Tier 2: Sleep & Short-Term Trends ---
+
+  const sleepFeats = featuresFromSleepRange(sleepJson, now);
+  const restingHR7dTrend = restingHr7dTrendFromSeries(rhr7dJson);
   return {
+    // Acute + Tier 1
     ...stepFeats,
     azmToday: dailyFeats.azmToday,
     timeSinceLastExerciseMin,
@@ -51,5 +62,15 @@ export async function buildAllFeatures({
     hourOfDay: dailyFeats.hourOfDay,
     dayOfWeek: dailyFeats.dayOfWeek,
     isWeekend: dailyFeats.isWeekend,
+
+    // Tier 2: sleep + trends
+    sleepDurationLastNightHrs: sleepFeats.sleepDurationLastNightHrs,
+    sleepEfficiency: sleepFeats.sleepEfficiency,
+    wasoMinutes: sleepFeats.wasoMinutes,
+    remRatio: sleepFeats.remRatio,
+    deepRatio: sleepFeats.deepRatio,
+    bedtimeStdDev7d: sleepFeats.bedtimeStdDev7d,
+    restingHR7dTrend,
+    notes: sleepFeats.notes, // array of strings
   };
 }
