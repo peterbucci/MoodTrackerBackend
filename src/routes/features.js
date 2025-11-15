@@ -1,10 +1,9 @@
 import express from "express";
 import { getAnyUser, getAnyTokenRow } from "../db/queries/tokens.js";
-import { listFeatures, getFeature } from "../db/queries/features.js";
+import { listFeatures, getFeatureWithLabel } from "../db/queries/features.js";
 
 const router = express.Router();
 
-// Simple read API (same behavior as before)
 router.get("/features", (req, res) => {
   const row = getAnyUser.get();
   if (!row) return res.json([]);
@@ -12,12 +11,50 @@ router.get("/features", (req, res) => {
   res.json(list);
 });
 
+/**
+ * Get a single feature with its label/category (if any) for the current user.
+ */
 router.get("/features/:id", (req, res) => {
-  const row = getAnyUser.get();
-  if (!row) return res.status(404).json({ error: "no user" });
-  const it = getFeature.get(req.params.id, row.userId);
-  if (!it) return res.status(404).json({ error: "not found" });
-  res.json({ id: it.id, createdAt: it.createdAt, data: JSON.parse(it.data) });
+  const userRow = getAnyUser.get();
+  if (!userRow) {
+    return res.status(404).json({ error: "no user" });
+  }
+
+  const userId = userRow.userId;
+  const featureId = req.params.id;
+
+  const row = getFeatureWithLabel.get(featureId, userId);
+  if (!row) {
+    return res.status(404).json({ error: "not_found" });
+  }
+
+  let data;
+  try {
+    data = JSON.parse(row.data);
+  } catch {
+    data = null;
+  }
+
+  const label = row.labelId
+    ? {
+        id: row.labelId,
+        label: row.label,
+        category: row.labelCategory,
+        createdAt: row.labelCreatedAt,
+      }
+    : null;
+
+  res.json({
+    ok: true,
+    feature: {
+      id: row.featureId,
+      userId: row.userId,
+      createdAt: row.featureCreatedAt,
+      source: row.source,
+      data,
+    },
+    label,
+  });
 });
 
 // Small health/debug endpoints

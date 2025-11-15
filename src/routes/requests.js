@@ -1,4 +1,3 @@
-// src/routes/requests.js
 import express from "express";
 import { v4 as uuidv4 } from "uuid";
 import { getAnyUser, getAnyTokenRow } from "../db/queries/tokens.js";
@@ -25,11 +24,16 @@ router.post("/requests", async (req, res) => {
   const id = uuidv4();
   const createdAt = Date.now();
 
+  const { clientFeatures, label, category } = req.body || {};
+
   insertRequest.run({
     id,
     userId: tok.userId,
     createdAt,
     source: "phone",
+    clientFeatures: clientFeatures ? JSON.stringify(clientFeatures) : null,
+    label: label || null,
+    labelCategory: category || null,
   });
 
   // Try to fulfill immediately if recent sync allows; otherwise stay queued

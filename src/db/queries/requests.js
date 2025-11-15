@@ -1,8 +1,26 @@
 import { db } from "../index.js";
 
 export const insertRequest = db.prepare(`
-  INSERT INTO requests (id, userId, createdAt, status, source)
-  VALUES (@id, @userId, @createdAt, 'pending', @source)
+  INSERT INTO requests (
+    id,
+    userId,
+    createdAt,
+    status,
+    source,
+    clientFeatures,
+    label,
+    labelCategory
+  )
+  VALUES (
+    @id,
+    @userId,
+    @createdAt,
+    'pending',
+    @source,
+    @clientFeatures,
+    @label,
+    @labelCategory
+  )
 `);
 
 export const pendingCount = db.prepare(`
@@ -12,7 +30,13 @@ export const pendingCount = db.prepare(`
 `);
 
 export const listPendingDetailed = db.prepare(`
-  SELECT id, userId, createdAt
+  SELECT
+    id,
+    userId,
+    createdAt,
+    clientFeatures,
+    label,
+    labelCategory
   FROM requests
   WHERE userId = ? AND status = 'pending'
   ORDER BY createdAt ASC
@@ -25,7 +49,14 @@ export const fulfillOneRequest = db.prepare(`
 `);
 
 export const listRequests = db.prepare(`
-  SELECT id, createdAt, status, featureId, source
+  SELECT
+    id,
+    createdAt,
+    status,
+    featureId,
+    source,
+    label,
+    labelCategory
   FROM requests
   WHERE userId = ?
   ORDER BY createdAt DESC

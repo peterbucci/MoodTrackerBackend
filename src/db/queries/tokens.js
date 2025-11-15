@@ -15,3 +15,5 @@ export const getToken = db.prepare(`SELECT * FROM tokens WHERE userId = ?`);
 export const getAnyTokenRow = db.prepare(`SELECT * FROM tokens LIMIT 1`);
 
 export const getAnyUser = db.prepare(`SELECT userId FROM tokens LIMIT 1`);
+
+export const clearTokens = db.prepare(`DELETE FROM tokens`);
