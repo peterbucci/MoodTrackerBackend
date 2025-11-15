@@ -67,12 +67,34 @@ router.get("/requests/all", (req, res) => {
   const row = getAnyUser.get();
   if (!row) return res.status(404).json({ error: "no user" });
 
-  const list = listRequests.all(row.userId);
+  const rawList = listRequests.all(row.userId);
+
+  const requests = rawList.map((r) => {
+    let clientFeatures = null;
+    if (r.clientFeatures) {
+      try {
+        clientFeatures = JSON.parse(r.clientFeatures);
+      } catch {
+        clientFeatures = null;
+      }
+    }
+    return {
+      id: r.id,
+      createdAt: r.createdAt,
+      status: r.status,
+      featureId: r.featureId,
+      source: r.source,
+      label: r.label,
+      labelCategory: r.labelCategory,
+      clientFeatures,
+    };
+  });
+
   res.json({
     ok: true,
     userId: row.userId,
-    count: list.length,
-    requests: list,
+    count: requests.length,
+    requests,
   });
 });
 

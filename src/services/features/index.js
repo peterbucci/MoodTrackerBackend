@@ -19,6 +19,10 @@ import {
   sleepDebtHrsFromSleepRange,
   recoveryIndexFromSignals,
 } from "./personalFeatures.js";
+import {
+  recentActivityXTimeOfDayFeature,
+  lowSleepHighActivityFlagFeature,
+} from "./crossFeatures.js";
 
 /**
  * Simple composite acute index with correct directions:
@@ -113,6 +117,21 @@ export async function buildAllFeatures({
     sleepDebtHrs,
   });
 
+  const recentActivity = recentActivityXTimeOfDayFeature({
+    stepsLast60m: stepFeats.stepsLast60m,
+    stepsLast30m: stepFeats.stepsLast30m,
+    stepsZToday,
+    hourOfDay: dailyFeats.hourOfDay,
+    isWeekend: dailyFeats.isWeekend,
+  });
+
+  const lowSleepHighActivity = lowSleepHighActivityFlagFeature({
+    sleepDurationLastNightHrs: sleepFeats.sleepDurationLastNightHrs,
+    sleepDebtHrs,
+    stepsZToday,
+    azmToday: dailyFeats.azmToday,
+  });
+
   return {
     // Acute + Tier 1
     ...stepFeats,
@@ -151,5 +170,9 @@ export async function buildAllFeatures({
     activityInertia,
     sleepDebtHrs,
     recoveryIndex,
+
+    // cross features:
+    ...recentActivity,
+    ...lowSleepHighActivity,
   };
 }

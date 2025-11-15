@@ -1,4 +1,6 @@
 import dayjs from "dayjs";
+import { v4 as uuidv4 } from "uuid";
+
 import {
   pendingCount,
   listPendingDetailed,
@@ -7,6 +9,7 @@ import {
 import { lastSyncTs } from "../db/queries/sync.js";
 import { insertFeature } from "../db/queries/features.js";
 import { insertLabel, linkFeatureLabel } from "../db/queries/labels.js";
+
 import {
   fetchStepsIntraday,
   fetchHeartIntraday,
@@ -19,9 +22,32 @@ import {
 } from "../services/fitbit/api.js";
 import { getAccessToken } from "../services/fitbit/oauth.js";
 import { buildAllFeatures } from "../services/features/index.js";
-import { v4 as uuidv4 } from "uuid";
+import { buildGeoAndTimeFeatures } from "../services/features/geoTimeFeatures.js";
 
+// How fresh a sync must be to auto-fulfill (tune later as needed)
 const REQUIRE_SYNC_WITHIN_MS = 1;
+
+// Helper: persist label if request has one
+function maybeSaveLabelForFeature({ req, userId, featureId, nowTs }) {
+  if (!req.label || typeof req.label !== "string" || !req.label.trim()) {
+    return;
+  }
+
+  const labelId = uuidv4();
+
+  insertLabel.run({
+    id: labelId,
+    userId,
+    label: req.label.trim(),
+    category: req.labelCategory || null,
+    createdAt: nowTs,
+  });
+
+  linkFeatureLabel.run({
+    featureId,
+    labelId,
+  });
+}
 
 export async function tryFulfillPending(
   userId,
@@ -43,8 +69,9 @@ export async function tryFulfillPending(
   }
 
   const pending = listPendingDetailed.all(userId);
-  if (!pending?.length)
+  if (!pending?.length) {
     return { ok: true, didFetch: false, reason: "no-pending" };
+  }
 
   // Group by date (YYYY-MM-DD)
   const groups = new Map();
@@ -96,7 +123,7 @@ export async function tryFulfillPending(
         now: anchor,
       });
 
-      // Client-provided feature object from request (if any)
+      // Client-provided features (if any)
       let clientFeats = {};
       if (req.clientFeatures) {
         try {
@@ -105,12 +132,20 @@ export async function tryFulfillPending(
           clientFeats = {};
         }
       }
+      const { lat, lon, ...restClientFeats } = clientFeats;
 
-      // Merge client features + Fitbit features into one blob.
-      // If a key collides, Fitbit data wins.
+      // Geo/time/cluster/weather from lat/lon + anchor
+      const geoTimeFeats = await buildGeoAndTimeFeatures({
+        lat,
+        lon,
+        anchor,
+      });
+
+      // Merge order: client → fitbit → geo/time (geo/time wins on conflicts)
       const mergedFeats = {
-        ...clientFeats,
         ...fitbitFeats,
+        ...restClientFeats,
+        ...geoTimeFeats,
       };
 
       const featureId = uuidv4();
@@ -124,23 +159,8 @@ export async function tryFulfillPending(
         data: JSON.stringify(mergedFeats),
       });
 
-      // If the request had a label, materialize it into labels + link table
-      if (req.label && typeof req.label === "string" && req.label.trim()) {
-        const labelId = uuidv4();
-
-        insertLabel.run({
-          id: labelId,
-          userId,
-          label: req.label.trim(),
-          category: req.labelCategory || null,
-          createdAt: nowTs,
-        });
-
-        linkFeatureLabel.run({
-          featureId,
-          labelId,
-        });
-      }
+      // Persist label linkage if present on request
+      maybeSaveLabelForFeature({ req, userId, featureId, nowTs });
 
       fulfillOneRequest.run({ requestId: req.id, featureId });
       total += 1;

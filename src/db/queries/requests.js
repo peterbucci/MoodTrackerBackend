@@ -55,6 +55,7 @@ export const listRequests = db.prepare(`
     status,
     featureId,
     source,
+    clientFeatures, 
     label,
     labelCategory
   FROM requests
