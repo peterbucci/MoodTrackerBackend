@@ -215,8 +215,10 @@ export async function buildGeoAndTimeFeatures({ lat, lon, anchor }) {
 
     if (
       !isHome &&
-      !onCampus(inMorningCommute || inEveningCommute) &&
-      dayOfWeek > 4
+      !onCampus &&
+      (inMorningCommute || inEveningCommute) &&
+      dayOfWeek < 5 &&
+      dayOfWeek > 0
     ) {
       commuteFlag = 1;
     }
