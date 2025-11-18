@@ -1,7 +1,6 @@
 import { config } from "../config/index.js";
 
 export function requireApiKey(req, res, next) {
-  console.log(req.get("x-api-key"));
   const key = req.get("x-api-key");
   if (!key || key !== config.API_SECRET) {
     return res.status(401).json({ error: "Unauthorized" });
