@@ -47,15 +47,14 @@ function maybeSaveLabelForFeature({ req, userId, featureId, nowTs }) {
 }
 
 export async function tryFulfillPending(userId) {
-  console.log("1");
   const pc = pendingCount.get(userId)?.c ?? 0;
   if (pc === 0) return { ok: true, didFetch: false, reason: "no-pending" };
-  console.log("2");
+
   const pending = listPendingDetailed.all(userId);
   if (!pending?.length) {
     return { ok: true, didFetch: false, reason: "no-pending" };
   }
-  console.log("3");
+
   // Group by date (YYYY-MM-DD)
   const groups = new Map();
   for (const r of pending) {
@@ -67,10 +66,10 @@ export async function tryFulfillPending(userId) {
     if (!groups.has(dateStr)) groups.set(dateStr, []);
     groups.get(dateStr).push(r);
   }
-  console.log("4");
+
   const accessToken = await getAccessToken(userId);
   let total = 0;
-  console.log("5");
+
   for (const [dateStr, requests] of groups.entries()) {
     const [
       stepsSeries,
@@ -91,7 +90,7 @@ export async function tryFulfillPending(userId) {
       fetchRestingHr7d(accessToken, dateStr),
       fetchSteps7d(accessToken, dateStr),
     ]);
-    console.log("6");
+
     for (const req of requests) {
       const anchor = dayjs(req.createdAt);
 
