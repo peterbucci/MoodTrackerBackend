@@ -50,18 +50,16 @@ router.post("/fitbit/webhook", async (req, res) => {
       const pc = pendingCount.get(userId)?.c ?? 0;
       console.log(`[sync] user=${userId} pendingRequests=${pc}`);
 
-      // 3) Only fetch if there are pending requests. Coalesce to avoid storms.
+      // 3) Only fetch if there are pending requests. Coalesce to avoid storms (repeated fetches).
       if (pc > 0) {
         scheduleCoalesced(userId, config.FETCH_DEBOUNCE_MS, async () => {
-          const out = await tryFulfillPending(userId, {
-            allowWithoutRecentSync: true,
-          });
+          const out = await tryFulfillPending(userId);
           console.log(`[sync->fulfill] user=${userId}`, out);
         });
       }
     }
   } catch {
-    // Best-effort ACK already sent
+    return res.status(403).send();
   }
 });
 

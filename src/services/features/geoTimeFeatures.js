@@ -3,17 +3,21 @@ import utc from "dayjs/plugin/utc.js";
 import timezone from "dayjs/plugin/timezone.js";
 import tzLookup from "tz-lookup";
 import SunCalc from "suncalc";
+import { config } from "../../config/index.js";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-// TODO: tune these for your real anchors
-const LOCATION_CLUSTERS = [
-  { key: "cluster1_home", lat: 42.36521249702002, lon: -71.0597493499573 },
-  { key: "cluster2_campus", lat: 42.31274293938102, lon: -71.03665273969844 },
-];
+const LOCATION_CLUSTERS = (() => {
+  try {
+    return JSON.parse(config.LOCATION_CLUSTERS);
+  } catch {
+    console.warn("Invalid LOCATION_CLUSTERS in .env; using empty array");
+    return [];
+  }
+})();
 
-// crude "distance" in degrees; good enough for clustering around Boston
+// crude "distance" in degrees; good enough for clustering
 function roughDistance2(lat1, lon1, lat2, lon2) {
   const dLat = lat1 - lat2;
   const dLon = lon1 - lon2;
@@ -24,7 +28,6 @@ function assignLocationCluster(lat, lon) {
   if (!Array.isArray(LOCATION_CLUSTERS) || LOCATION_CLUSTERS.length === 0) {
     return null;
   }
-
   let best = LOCATION_CLUSTERS[0];
   let bestD2 = roughDistance2(lat, lon, best.lat, best.lon);
 
@@ -206,10 +209,15 @@ export async function buildGeoAndTimeFeatures({ lat, lon, anchor }) {
   let commuteFlag = 0;
   if (clusterKey) {
     const isHome = clusterKey.toLowerCase().includes("home");
-    const inMorningCommute = hourOfDay >= 7 && hourOfDay <= 10;
-    const inEveningCommute = hourOfDay >= 16 && hourOfDay <= 19;
+    const onCampus = clusterKey.toLowerCase().includes("campus");
+    const inMorningCommute = hourOfDay >= 14 && hourOfDay <= 16;
+    const inEveningCommute = hourOfDay >= 17 && hourOfDay <= 20;
 
-    if (!isHome && (inMorningCommute || inEveningCommute)) {
+    if (
+      !isHome &&
+      !onCampus(inMorningCommute || inEveningCommute) &&
+      dayOfWeek > 4
+    ) {
       commuteFlag = 1;
     }
   }

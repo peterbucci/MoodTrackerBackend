@@ -11,7 +11,7 @@ export function featuresFromDailySummary(summaryJson, now = dayjs()) {
     typeof summary.fairlyActiveMinutes === "number" ||
     typeof summary.veryActiveMinutes === "number"
   ) {
-    // 2) Fallback: approximate AZM from legacy fields (your call)
+    // 2) Fallback: approximate AZM from legacy fields
     // Simple version: count fairly+very active minutes as "zone" time
     azmToday =
       (summary.fairlyActiveMinutes || 0) + (summary.veryActiveMinutes || 0);

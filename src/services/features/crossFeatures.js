@@ -1,6 +1,5 @@
 export function recentActivityXTimeOfDayFeature({
   stepsLast60m,
-  stepsLast30m,
   stepsZToday,
   hourOfDay,
   isWeekend,

@@ -1,11 +1,13 @@
 import express from "express";
 import bodyParser from "body-parser";
+import cors from "cors";
 import { rawJson } from "./middleware/rawJson.js";
+import { requireApiKey } from "./middleware/auth.js";
 import oauthRoutes from "./routes/oauth.js";
 import webhookRoutes from "./routes/webhook.js";
 import featuresRoutes from "./routes/features.js";
 import requestRoutes from "./routes/requests.js";
-import cors from "cors";
+import { config } from "./config/index.js";
 
 export function createServer() {
   const app = express();
@@ -13,9 +15,9 @@ export function createServer() {
   // Allow Expo web dev origin
   app.use(
     cors({
-      origin: "http://localhost:8081", // Expo web
+      origin: config.ORIGIN,
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization"],
+      allowedHeaders: ["Content-Type", "Authorization", "x-api-key"],
     })
   );
 
@@ -25,12 +27,18 @@ export function createServer() {
     return bodyParser.json()(req, res, next);
   });
 
+  // --- PUBLIC ROUTES
+
   // Raw JSON only for webhook signature verification
   app.use("/fitbit/webhook", rawJson);
 
-  // Routes
-  app.use(oauthRoutes);
   app.use(webhookRoutes);
+  app.use(oauthRoutes);
+
+  // --- PROTECTED ROUTES (everything else)
+  app.use(requireApiKey);
+
+  // Your authenticated routes
   app.use(featuresRoutes);
   app.use(requestRoutes);
 

@@ -6,12 +6,11 @@ import {
   pendingCount,
   listRequests,
 } from "../db/queries/requests.js";
-import { tryFulfillPending } from "../jobs/orchestrator.js";
 
 const router = express.Router();
 
 /**
- * Queue a new build request. If a recent sync exists, we try to fulfill now.
+ * Queue a new build request.
  */
 router.post("/requests", async (req, res) => {
   const tok = getAnyTokenRow.get();
@@ -21,24 +20,38 @@ router.post("/requests", async (req, res) => {
       .json({ error: "link a Fitbit user first (/oauth/start)" });
   }
 
+  // Require a non-empty body
+  if (!req.body || Object.keys(req.body).length === 0) {
+    return res.status(400).json({
+      ok: false,
+      error: "request body required",
+    });
+  }
+
   const id = uuidv4();
   const createdAt = Date.now();
 
-  const { clientFeatures, label, category } = req.body || {};
+  const { clientFeatures, label, category } = req.body;
+
+  if (
+    clientFeatures == null &&
+    (label == null || label === "") &&
+    (category == null || category === "")
+  ) {
+    return res.status(400).json({
+      ok: false,
+      error: "must include clientFeatures, label, and category",
+    });
+  }
 
   insertRequest.run({
     id,
     userId: tok.userId,
     createdAt,
     source: "phone",
-    clientFeatures: clientFeatures ? JSON.stringify(clientFeatures) : null,
-    label: label || null,
-    labelCategory: category || null,
-  });
-
-  // Try to fulfill immediately if recent sync allows; otherwise stay queued
-  const fulfillment = await tryFulfillPending(tok.userId, {
-    allowWithoutRecentSync: false,
+    clientFeatures: JSON.stringify(clientFeatures),
+    label: label,
+    labelCategory: category,
   });
 
   res.json({
@@ -46,7 +59,6 @@ router.post("/requests", async (req, res) => {
     requestId: id,
     requestCreatedAt: createdAt,
     pendingCount: pendingCount.get(tok.userId)?.c ?? 0,
-    fulfillment,
   });
 });
 

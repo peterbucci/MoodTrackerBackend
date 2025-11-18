@@ -3,7 +3,7 @@ const lastRun = new Map();
 /**
  * scheduleCoalesced(key, windowMs, fn)
  * Runs at most once per window per key; if called again within the window,
- * it no-ops (or you could change this to queue and run after the window).
+ * it no-ops (or could change this to queue and run after the window).
  */
 export function scheduleCoalesced(key, windowMs, fn) {
   const now = Date.now();

@@ -12,7 +12,7 @@ router.get("/features", (req, res) => {
 });
 
 /**
- * Get a single feature with its label/category (if any) for the current user.
+ * Get a single feature with its label/category for the current user.
  */
 router.get("/features/:id", (req, res) => {
   const userRow = getAnyUser.get();
@@ -35,14 +35,12 @@ router.get("/features/:id", (req, res) => {
     data = null;
   }
 
-  const label = row.labelId
-    ? {
-        id: row.labelId,
-        label: row.label,
-        category: row.labelCategory,
-        createdAt: row.labelCreatedAt,
-      }
-    : null;
+  const label = {
+    id: row.labelId,
+    label: row.label,
+    category: row.labelCategory,
+    createdAt: row.labelCreatedAt,
+  };
 
   res.json({
     ok: true,

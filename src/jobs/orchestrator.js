@@ -6,7 +6,6 @@ import {
   listPendingDetailed,
   fulfillOneRequest,
 } from "../db/queries/requests.js";
-import { lastSyncTs } from "../db/queries/sync.js";
 import { insertFeature } from "../db/queries/features.js";
 import { insertLabel, linkFeatureLabel } from "../db/queries/labels.js";
 
@@ -23,9 +22,7 @@ import {
 import { getAccessToken } from "../services/fitbit/oauth.js";
 import { buildAllFeatures } from "../services/features/index.js";
 import { buildGeoAndTimeFeatures } from "../services/features/geoTimeFeatures.js";
-
-// How fresh a sync must be to auto-fulfill (tune later as needed)
-const REQUIRE_SYNC_WITHIN_MS = 1;
+import tzLookup from "tz-lookup";
 
 // Helper: persist label if request has one
 function maybeSaveLabelForFeature({ req, userId, featureId, nowTs }) {
@@ -49,24 +46,9 @@ function maybeSaveLabelForFeature({ req, userId, featureId, nowTs }) {
   });
 }
 
-export async function tryFulfillPending(
-  userId,
-  { allowWithoutRecentSync = false } = {}
-) {
+export async function tryFulfillPending(userId) {
   const pc = pendingCount.get(userId)?.c ?? 0;
   if (pc === 0) return { ok: true, didFetch: false, reason: "no-pending" };
-
-  const last = lastSyncTs.get(userId)?.createdAt ?? 0;
-  const recentEnough = Date.now() - last <= REQUIRE_SYNC_WITHIN_MS;
-  if (!allowWithoutRecentSync && !recentEnough) {
-    return {
-      ok: true,
-      didFetch: false,
-      reason: "waiting-for-sync",
-      pending: pc,
-      lastSync: last,
-    };
-  }
 
   const pending = listPendingDetailed.all(userId);
   if (!pending?.length) {
@@ -76,7 +58,10 @@ export async function tryFulfillPending(
   // Group by date (YYYY-MM-DD)
   const groups = new Map();
   for (const r of pending) {
-    const anchor = dayjs(r.createdAt);
+    const clientFeats = await JSON.parse(r.clientFeatures);
+    const { lat, lon } = clientFeats;
+    const tz = tzLookup(lat, lon);
+    const anchor = dayjs(r.createdAt).tz(tz);
     const dateStr = anchor.format("YYYY-MM-DD");
     if (!groups.has(dateStr)) groups.set(dateStr, []);
     groups.get(dateStr).push(r);

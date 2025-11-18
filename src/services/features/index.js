@@ -25,7 +25,7 @@ import {
 } from "./crossFeatures.js";
 
 /**
- * Simple composite acute index with correct directions:
+ * Simple composite acute index
  * + hrDelta5m, + stepBurst5m, + azmSpike30m, - zeroStreakMax60m
  */
 function computeAcuteArousalIndex({
@@ -60,7 +60,7 @@ export async function buildAllFeatures({
   dateISO, // YYYY-MM-DD (for intraday alignment)
   now = dayjs(),
 }) {
-  // --- Tier A + Tier 1 ---
+  // --- Tier 1 & Acute ---
 
   // Step-derived
   const stepFeats = featuresFromSteps(stepsSeries, now);
@@ -119,7 +119,6 @@ export async function buildAllFeatures({
 
   const recentActivity = recentActivityXTimeOfDayFeature({
     stepsLast60m: stepFeats.stepsLast60m,
-    stepsLast30m: stepFeats.stepsLast30m,
     stepsZToday,
     hourOfDay: dailyFeats.hourOfDay,
     isWeekend: dailyFeats.isWeekend,

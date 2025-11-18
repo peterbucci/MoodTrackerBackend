@@ -9,4 +9,7 @@ export const config = {
   FITBIT_SUBSCRIBER_ID: process.env.FITBIT_SUBSCRIBER_ID,
   FITBIT_VERIFICATION_CODE: process.env.FITBIT_VERIFICATION_CODE,
   FETCH_DEBOUNCE_MS: Number(process.env.FETCH_DEBOUNCE_MS || "600000"),
+  API_SECRET: process.env.API_SECRET,
+  LOCATION_CLUSTERS: process.env.LOCATION_CLUSTERS,
+  ORIGIN: process.env.ORIGIN,
 };

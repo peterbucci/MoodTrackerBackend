@@ -20,8 +20,8 @@ export function applySchema(db) {
   CREATE TABLE IF NOT EXISTS labels (
     id TEXT PRIMARY KEY,
     userId TEXT NOT NULL,
-    label TEXT NOT NULL,      -- flexible emotion string
-    category TEXT,            -- optional coarse category (energized, tired, etc.)
+    label TEXT NOT NULL,     
+    category TEXT,            
     createdAt INTEGER NOT NULL
   );
 
@@ -45,11 +45,11 @@ export function applySchema(db) {
     userId TEXT NOT NULL,
     createdAt INTEGER NOT NULL,
     status TEXT NOT NULL,         -- 'pending' | 'fulfilled' | 'canceled'
-    featureId TEXT,               -- set when fulfilled (many requests -> one feature)
+    featureId TEXT,               
     source TEXT NOT NULL DEFAULT 'phone', -- or 'manual' later
     clientFeatures TEXT,          -- JSON from app (nullable)
     label TEXT,                   -- raw emotion string from app
-    labelCategory TEXT            -- optional category string
+    labelCategory TEXT         
   );
 
   CREATE TABLE IF NOT EXISTS sync_log (

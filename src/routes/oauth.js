@@ -7,6 +7,7 @@ import {
   getAnyTokenRow,
   clearTokens,
 } from "../db/queries/tokens.js";
+import { requireApiKey } from "../middleware/auth.js";
 
 const router = express.Router();
 
@@ -80,7 +81,7 @@ router.get("/oauth/callback", async (req, res) => {
 });
 
 // Is there a valid token in the DB?
-router.get("/oauth/status", (req, res) => {
+router.get("/oauth/status", requireApiKey, (req, res) => {
   const row = getAnyTokenRow.get();
 
   if (!row) {
@@ -101,7 +102,7 @@ router.get("/oauth/status", (req, res) => {
 });
 
 // Unlink / "logout" – clears tokens
-router.post("/oauth/unlink", (req, res) => {
+router.post("/oauth/unlink", requireApiKey, (req, res) => {
   clearTokens.run();
   // Could also try to unsubscribe from Fitbit here later
   res.json({ ok: true });

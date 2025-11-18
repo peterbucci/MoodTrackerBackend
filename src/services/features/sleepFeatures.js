@@ -62,7 +62,6 @@ export function featuresFromSleepRange(sleepJson, now = dayjs()) {
     const levelsSummary = lastNight.levels?.summary || {};
     const rem = levelsSummary.rem?.minutes ?? null;
     const deep = levelsSummary.deep?.minutes ?? null;
-    const light = levelsSummary.light?.minutes ?? null;
     const totalMins =
       (levelsSummary.rem?.minutes || 0) +
       (levelsSummary.deep?.minutes || 0) +
