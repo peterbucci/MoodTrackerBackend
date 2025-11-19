@@ -34,12 +34,12 @@ import { v4 as uuidv4 } from "uuid";
 import dayjs from "dayjs";
 import tzLookup from "tz-lookup";
 import {
+  fulfillOneRequest,
   pendingCount,
   listPendingDetailed,
-} from "../db/queries/pendingRequests.js";
-import { fulfillOneRequest } from "../db/queries/fulfilledRequests.js";
-import { buildAllFeatures } from "../features/buildAllFeatures.js";
-import { buildGeoAndTimeFeatures } from "../features/buildGeoAndTimeFeatures.js";
+} from "../db/queries/requests.js";
+import { buildAllFeatures } from "../services/features/buildAllFeatures.js";
+import { buildGeoAndTimeFeatures } from "..services/features/buildGeoAndTimeFeatures.js";
 import { logFetchedFitbitData } from "../utils/logger.js";
 
 // Helper: persist label if request has one
