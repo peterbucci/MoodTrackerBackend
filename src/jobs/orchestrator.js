@@ -23,6 +23,7 @@ import { getAccessToken } from "../services/fitbit/oauth.js";
 import { buildAllFeatures } from "../services/features/index.js";
 import { buildGeoAndTimeFeatures } from "../services/features/buildGeoAndTimeFeatures.js";
 import tzLookup from "tz-lookup";
+import { logFetchedFitbitData } from "../services/fitbit/logger.js";
 
 // Helper: persist label if request has one
 function maybeSaveLabelForFeature({ req, userId, featureId, nowTs }) {
@@ -96,6 +97,9 @@ export async function tryFulfillPending(userId) {
     const [
       stepsSeries,
       heartSeries,
+      azmSeries,
+      breathingSeries,
+      hrvJson,
       dailyJson,
       caloriesJson,
       exerciseJson,
@@ -105,6 +109,9 @@ export async function tryFulfillPending(userId) {
     ] = await Promise.all([
       fetchStepsIntraday(accessToken, dateStr),
       fetchHeartIntraday(accessToken, dateStr),
+      fetchAzmIntraday(accessToken, dateStr), // NEW: AZM intraday
+      fetchBreathingRateIntraday(accessToken, dateStr), // NEW: breathing intraday
+      fetchHrvDaily(accessToken, dateStr), // NEW: HRV daily
       fetchDailySummary(accessToken, dateStr),
       fetchCaloriesIntraday(accessToken, dateStr),
       fetchMostRecentExercise(accessToken, dateStr),
@@ -114,6 +121,20 @@ export async function tryFulfillPending(userId) {
     ]);
 
     for (const req of requests) {
+      logFetchedFitbitData(dateStr, {
+        stepsSeries,
+        heartSeries,
+        azmSeries,
+        breathingSeries,
+        hrvJson,
+        dailyJson,
+        caloriesJson,
+        exerciseJson,
+        sleepJson,
+        rhr7dJson,
+        steps7dJson,
+      });
+
       // Client-provided features
       let clientFeats = {};
       if (req.clientFeatures) {
