@@ -42,18 +42,7 @@ router.post("/requests", async (req, res) => {
     });
   }
 
-  // Prefer client-provided anchor time if present, else fall back to server time
   let createdAt = Date.now();
-  if (
-    clientFeatures &&
-    (typeof clientFeatures.anchorMs === "number" ||
-      typeof clientFeatures.anchorMs === "string")
-  ) {
-    const n = Number(clientFeatures.anchorMs);
-    if (!Number.isNaN(n) && n > 0) {
-      createdAt = n;
-    }
-  }
 
   insertRequest.run({
     id,

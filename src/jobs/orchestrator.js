@@ -55,20 +55,28 @@ export async function tryFulfillPending(userId) {
     return { ok: true, didFetch: false, reason: "no-pending" };
   }
 
-  // Group by date (YYYY-MM-DD)
-  // Group by date (YYYY-MM-DD)
+  // -------------------------------
+  // Group requests by DATE using SERVER time in user's timezone
+  // -------------------------------
   const groups = new Map();
 
   for (const r of pending) {
     let clientFeats = {};
+
     try {
-      clientFeats = JSON.parse(r.clientFeatures);
+      clientFeats = JSON.parse(r.clientFeatures) || {};
     } catch {}
 
-    const { anchorMs, lat, lon } = clientFeats;
+    const { lat, lon } = clientFeats;
 
-    // USE anchorMs — not createdAt — for grouping
-    const anchor = dayjs(anchorMs);
+    // Ensure timezone lookup works even if lat/lon missing
+    const tz =
+      typeof lat === "number" && typeof lon === "number"
+        ? tzLookup(lat, lon)
+        : "UTC";
+
+    // USE SERVER TIME, NEVER CLIENT TIME
+    const anchor = dayjs().tz(tz);
 
     const dateStr = anchor.format("YYYY-MM-DD");
 
@@ -79,6 +87,9 @@ export async function tryFulfillPending(userId) {
   const accessToken = await getAccessToken(userId);
   let total = 0;
 
+  // -------------------------------
+  // For each date, fetch Fitbit data and fulfill requests
+  // -------------------------------
   for (const [dateStr, requests] of groups.entries()) {
     const [
       stepsSeries,
@@ -112,7 +123,7 @@ export async function tryFulfillPending(userId) {
       }
       const { lat, lon, anchorMs, ...restClientFeats } = clientFeats;
 
-      const anchor = dayjs(anchorMs);
+      const anchor = dayjs().tz(tz);
 
       // Fitbit-derived features for this anchor time
       const fitbitFeats = await buildAllFeatures({
