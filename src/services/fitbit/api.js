@@ -106,8 +106,6 @@ export async function fetchSteps7d(accessToken, endDateISO) {
   return r.json();
 }
 
-import fetch from "node-fetch";
-
 /**
  * Fetch Active Zone Minutes intraday for a given date at 1min resolution.
  * Shape (roughly):
