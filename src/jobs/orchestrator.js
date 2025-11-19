@@ -24,7 +24,7 @@ import {
   fetchNutritionDaily,
   fetchWaterDaily,
 } from "../services/fitbit/nutrition.ts";
-import { getAccessToken } from "../services/fitbit/tokens.js";
+import { getAccessToken } from "../services/fitbit/oauth.js";
 import {
   insertFeature,
   insertLabel,
