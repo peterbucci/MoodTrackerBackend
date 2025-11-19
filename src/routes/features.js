@@ -98,7 +98,13 @@ router.get("/admin/health", (req, res) =>
 router.get("/debug/token", (req, res) => {
   const row = getAnyTokenRow.get();
   if (!row) return res.status(404).json({ error: "no token" });
-  res.json({ userId: row.userId, scope: row.scope, expiresAt: row.expiresAt });
-});
 
-export default router;
+  // TEMPORARY: expose access and refresh tokens for debugging only
+  res.json({
+    userId: row.userId,
+    scope: row.scope,
+    expiresAt: row.expiresAt,
+    accessToken: row.accessToken,
+    refreshToken: row.refreshToken,
+  });
+});
