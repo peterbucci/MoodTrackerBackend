@@ -58,11 +58,18 @@ export async function tryFulfillPending(userId) {
   // Group by date (YYYY-MM-DD)
   const groups = new Map();
   for (const r of pending) {
-    const clientFeats = await JSON.parse(r.clientFeatures);
-    const { lat, lon } = clientFeats;
-    const tz = tzLookup(lat, lon);
-    const anchor = dayjs(r.createdAt).tz(tz);
+    let clientFeats = {};
+    try {
+      clientFeats = JSON.parse(r.clientFeatures);
+    } catch {}
+
+    const { anchorMs } = clientFeats;
+
+    // Use anchorMs from the phone. If missing, fallback to createdAt.
+    const anchor = anchorMs ? dayjs(anchorMs) : dayjs(r.createdAt);
+
     const dateStr = anchor.format("YYYY-MM-DD");
+
     if (!groups.has(dateStr)) groups.set(dateStr, []);
     groups.get(dateStr).push(r);
   }
