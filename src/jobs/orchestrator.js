@@ -5,17 +5,21 @@ import {
   fetchMostRecentExercise,
   fetchSteps7d,
   fetchAzmIntraday,
-} from "../services/fitbit/activity.js";
+} from "../services/fitbit/activity.ts";
 import {
   fetchHeartIntraday,
   fetchRestingHr7d,
   fetchHrvDaily,
   fetchHrvIntraday,
-} from "../services/fitbit/heart.js";
-import { fetchSleepRange } from "../services/fitbit/sleep.js";
-import { fetchBreathingRateIntraday } from "../services/fitbit/respiration.js";
-import { fetchSpo2Daily } from "../services/fitbit/spo2.js";
-import { fetchTempSkinDaily } from "../services/fitbit/temperature.js";
+} from "../services/fitbit/heart.ts";
+import {
+  fetchSleepRange,
+  fetchBreathingRateIntraday,
+} from "../services/fitbit/sleep.ts";
+import {
+  fetchSpo2Daily,
+  fetchTempSkinDaily,
+} from "../services/fitbit/health.ts";
 import {
   fetchNutritionDaily,
   fetchWaterDaily,
