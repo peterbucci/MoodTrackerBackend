@@ -92,6 +92,7 @@ export async function tryFulfillPending(userId) {
     ]);
 
     for (const req of requests) {
+      console.log(req.createdAt);
       const anchor = dayjs(req.createdAt);
 
       // Fitbit-derived features for this anchor time
