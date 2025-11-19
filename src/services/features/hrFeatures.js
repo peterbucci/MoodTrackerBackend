@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import { timeOnSameDay } from "../../utils/date";
 
 /**
  * Compute averages over sliding windows in minutes.
@@ -10,7 +11,7 @@ function avgWindow(series, now, minutes, offsetMinutes = 0) {
   let sum = 0;
   let count = 0;
   for (const p of series || []) {
-    const t = dayjs(p.time);
+    const t = timeOnSameDay(now, p.time);
     if (!t.isAfter(start) || t.isAfter(end)) continue;
     const hr = typeof p.hr === "number" ? p.hr : null;
     if (hr != null) {
