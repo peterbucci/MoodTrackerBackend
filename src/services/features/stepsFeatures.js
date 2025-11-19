@@ -1,10 +1,15 @@
 import dayjs from "dayjs";
 
+function timeOnSameDay(now, timeStr) {
+  const [h, m, s] = timeStr.split(":").map((n) => parseInt(n, 10) || 0);
+  return now.hour(h).minute(m).second(s).millisecond(0);
+}
+
 function sumWindow(series, now, minutes) {
   const start = now.subtract(minutes, "minute");
   let s = 0;
   for (const p of series) {
-    const t = dayjs(p.time);
+    const t = timeOnSameDay(now, p.time); // ⬅️ was dayjs(p.time)
     if (t.isAfter(start) && !t.isAfter(now)) s += p.steps || 0;
   }
   return s;
@@ -14,7 +19,7 @@ function maxOneMinInLast(series, now, minutes) {
   const start = now.subtract(minutes, "minute");
   let m = 0;
   for (const p of series) {
-    const t = dayjs(p.time);
+    const t = timeOnSameDay(now, p.time); // ⬅️
     if (t.isAfter(start) && !t.isAfter(now)) m = Math.max(m, p.steps || 0);
   }
   return m;
@@ -25,7 +30,7 @@ function longestZeroStreak(series, now, minutes) {
   let run = 0,
     best = 0;
   for (const p of series) {
-    const t = dayjs(p.time);
+    const t = timeOnSameDay(now, p.time); // ⬅️
     if (t.isAfter(start) && !t.isAfter(now)) {
       if ((p.steps || 0) === 0) {
         run += 1;
@@ -40,10 +45,13 @@ function slopeLast60(series, now) {
   const start = now.subtract(60, "minute");
   const pts = series
     .filter((p) => {
-      const t = dayjs(p.time);
+      const t = timeOnSameDay(now, p.time); // ⬅️
       return t.isAfter(start) && !t.isAfter(now);
     })
-    .map((p) => ({ x: dayjs(p.time).valueOf(), y: p.steps || 0 }));
+    .map((p) => {
+      const t = timeOnSameDay(now, p.time); // ⬅️
+      return { x: t.valueOf(), y: p.steps || 0 };
+    });
   if (pts.length < 2) return 0;
   const n = pts.length;
   const meanX = pts.reduce((a, b) => a + b.x, 0) / n;
@@ -62,14 +70,13 @@ export function sedentaryMinsLast3hFromSteps(series, now = dayjs()) {
   const start = now.subtract(180, "minute");
   let mins = 0;
   for (const p of series) {
-    const t = dayjs(p.time);
+    const t = timeOnSameDay(now, p.time); // ⬅️
     if (t.isAfter(start) && !t.isAfter(now))
       mins += (p.steps || 0) === 0 ? 1 : 0;
   }
   return mins;
 }
 
-// Define "active" as >= 60 steps in a minute, then:
 // azmSpike30m = activeMinutes(last 30m) - activeMinutes(previous 30m)
 export function azmSpike30mFromSteps(series, now = dayjs()) {
   const threshold = 60; // steps per minute to count as "active"
@@ -81,7 +88,8 @@ export function azmSpike30mFromSteps(series, now = dayjs()) {
   let activeLast30 = 0;
 
   for (const p of series || []) {
-    const t = dayjs(p.time);
+    const t = timeOnSameDay(now, p.time); // ⬅️
+
     if (!t.isAfter(start) || t.isAfter(end)) continue;
     const steps = p.steps || 0;
     const isActive = steps >= threshold;
