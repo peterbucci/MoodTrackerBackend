@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 
 // p.time is just a clock time from Fitbit: "HH:mm" or "HH:mm:ss"
 function parseTimeToMinutes(timeStr) {
+  console.log(timeStr);
   const parts = String(timeStr).split(":");
   const h = parseInt(parts[0] || "0", 10) || 0;
   const m = parseInt(parts[1] || "0", 10) || 0;
@@ -20,7 +21,6 @@ function sumWindow(series, now, minutes) {
   let s = 0;
   for (const p of series || []) {
     const tM = parseTimeToMinutes(p.time);
-    console.log(tM, startM, nowM);
     if (tM > startM && tM <= nowM) s += p.steps || 0;
   }
   return s;
