@@ -39,7 +39,7 @@ import {
   listPendingDetailed,
 } from "../db/queries/requests.js";
 import { buildAllFeatures } from "../services/features/index.js";
-import { buildGeoAndTimeFeatures } from "..services/features/buildGeoAndTimeFeatures.js";
+import { buildGeoAndTimeFeatures } from "../services/features/buildGeoAndTimeFeatures.js";
 import { logFetchedFitbitData } from "../utils/logger.js";
 
 // Helper: persist label if request has one
