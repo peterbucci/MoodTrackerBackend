@@ -18,12 +18,15 @@ import {
   fetchSleepRange,
   fetchRestingHr7d,
   fetchSteps7d,
+  fetchAzmIntraday,
+  fetchBreathingRateIntraday,
+  fetchHrvDaily,
 } from "../services/fitbit/api.js";
 import { getAccessToken } from "../services/fitbit/oauth.js";
 import { buildAllFeatures } from "../services/features/index.js";
 import { buildGeoAndTimeFeatures } from "../services/features/buildGeoAndTimeFeatures.js";
 import tzLookup from "tz-lookup";
-import { logFetchedFitbitData } from "../services/fitbit/logger.js";
+import { logFetchedFitbitData } from "../utils/logger.js";
 
 // Helper: persist label if request has one
 function maybeSaveLabelForFeature({ req, userId, featureId, nowTs }) {
