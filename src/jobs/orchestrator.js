@@ -22,7 +22,6 @@ import {
 import { getAccessToken } from "../services/fitbit/oauth.js";
 import { buildAllFeatures } from "../services/features/index.js";
 import { buildGeoAndTimeFeatures } from "../services/features/buildGeoAndTimeFeatures.js";
-import tzLookup from "tz-lookup";
 
 // Helper: persist label if request has one
 function maybeSaveLabelForFeature({ req, userId, featureId, nowTs }) {
@@ -50,27 +49,28 @@ export async function tryFulfillPending(userId) {
   const pc = pendingCount.get(userId)?.c ?? 0;
   if (pc === 0) return { ok: true, didFetch: false, reason: "no-pending" };
 
-  const pending = listPendingDetailed.all(userId);
-  if (!pending?.length) {
-    return { ok: true, didFetch: false, reason: "no-pending" };
-  }
+  const requests = listPendingDetailed.all(userId);
 
-  // Group by date (YYYY-MM-DD)
-  const groups = new Map();
-  for (const r of pending) {
-    const clientFeats = await JSON.parse(r.clientFeatures);
-    const { lat, lon } = clientFeats;
-    const tz = tzLookup(lat, lon);
-    const anchor = dayjs(r.createdAt).tz(tz);
+  const byDate = new Map();
+
+  // FIRST PASS: bucket by date using anchorMs
+  for (const r of requests) {
+    let clientFeats = {};
+    try {
+      clientFeats = JSON.parse(r.clientFeatures);
+    } catch {}
+
+    const anchorMs = clientFeats.anchorMs ?? r.createdAt;
+    const anchor = dayjs(anchorMs);
     const dateStr = anchor.format("YYYY-MM-DD");
-    if (!groups.has(dateStr)) groups.set(dateStr, []);
-    groups.get(dateStr).push(r);
+
+    if (!byDate.has(dateStr)) byDate.set(dateStr, []);
+    byDate.get(dateStr).push({ r, clientFeats, anchor });
   }
 
-  const accessToken = await getAccessToken(userId);
-  let total = 0;
-
-  for (const [dateStr, requests] of groups.entries()) {
+  // SECOND PASS: process groups
+  for (const [dateStr, list] of byDate.entries()) {
+    const accessToken = getAccessToken(userId);
     const [
       stepsSeries,
       heartSeries,
@@ -91,21 +91,10 @@ export async function tryFulfillPending(userId) {
       fetchSteps7d(accessToken, dateStr),
     ]);
 
-    for (const req of requests) {
-      // Client-provided features (if any)
-      let clientFeats = {};
-      if (req.clientFeatures) {
-        try {
-          clientFeats = JSON.parse(req.clientFeatures);
-        } catch {
-          clientFeats = {};
-        }
-      }
-      const { lat, lon, anchorMs, ...restClientFeats } = clientFeats;
+    for (const { r, clientFeats, anchor } of list) {
+      const { lat, lon, ...restClientFeats } = clientFeats;
 
-      const anchor = dayjs(anchorMs);
-
-      // Fitbit-derived features for this anchor time
+      // Build Fitbit features
       const fitbitFeats = await buildAllFeatures({
         stepsSeries,
         heartSeries,
@@ -119,36 +108,32 @@ export async function tryFulfillPending(userId) {
         now: anchor,
       });
 
-      // Geo/time/cluster/weather from lat/lon + anchor
-      const geoTimeFeats = await buildGeoAndTimeFeatures({
-        lat,
-        lon,
-        anchor,
-      });
+      // Geo features
+      const geoTimeFeats =
+        typeof lat === "number" && typeof lon === "number"
+          ? await buildGeoAndTimeFeatures({ lat, lon, anchor })
+          : {};
 
-      // Merge order: client → fitbit → geo/time (geo/time wins on conflicts)
-      const mergedFeats = {
+      // Merge
+      const merged = {
         ...fitbitFeats,
         ...restClientFeats,
         ...geoTimeFeats,
       };
 
       const featureId = uuidv4();
-      const nowTs = Date.now();
+      const ts = Date.now();
 
       insertFeature.run({
         id: featureId,
         userId,
-        createdAt: nowTs,
+        createdAt: ts,
         source: "phone-request",
-        data: JSON.stringify(mergedFeats),
+        data: JSON.stringify(merged),
       });
 
-      // Persist label linkage if present on request
-      maybeSaveLabelForFeature({ req, userId, featureId, nowTs });
-
-      fulfillOneRequest.run({ requestId: req.id, featureId });
-      total += 1;
+      maybeSaveLabelForFeature({ req: r, userId, featureId, nowTs: ts });
+      fulfillOneRequest.run({ requestId: r.id, featureId });
     }
   }
 
