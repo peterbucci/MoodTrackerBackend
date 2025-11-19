@@ -20,7 +20,6 @@ router.post("/requests", async (req, res) => {
       .json({ error: "link a Fitbit user first (/oauth/start)" });
   }
 
-  // Require a non-empty body
   if (!req.body || Object.keys(req.body).length === 0) {
     return res.status(400).json({
       ok: false,
@@ -29,7 +28,6 @@ router.post("/requests", async (req, res) => {
   }
 
   const id = uuidv4();
-  const createdAt = Date.now();
 
   const { clientFeatures, label, category } = req.body;
 
@@ -44,13 +42,26 @@ router.post("/requests", async (req, res) => {
     });
   }
 
+  // Prefer client-provided anchor time if present, else fall back to server time
+  let createdAt = Date.now();
+  if (
+    clientFeatures &&
+    (typeof clientFeatures.anchorMs === "number" ||
+      typeof clientFeatures.anchorMs === "string")
+  ) {
+    const n = Number(clientFeatures.anchorMs);
+    if (!Number.isNaN(n) && n > 0) {
+      createdAt = n;
+    }
+  }
+
   insertRequest.run({
     id,
     userId: tok.userId,
     createdAt,
     source: "phone",
     clientFeatures: JSON.stringify(clientFeatures),
-    label: label,
+    label,
     labelCategory: category,
   });
 

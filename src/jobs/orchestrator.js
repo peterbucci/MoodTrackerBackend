@@ -92,8 +92,18 @@ export async function tryFulfillPending(userId) {
     ]);
 
     for (const req of requests) {
-      console.log(req.createdAt);
-      const anchor = dayjs(req.createdAt);
+      // Client-provided features (if any)
+      let clientFeats = {};
+      if (req.clientFeatures) {
+        try {
+          clientFeats = JSON.parse(req.clientFeatures);
+        } catch {
+          clientFeats = {};
+        }
+      }
+      const { lat, lon, anchorMs, ...restClientFeats } = clientFeats;
+
+      const anchor = dayjs(anchorMs);
 
       // Fitbit-derived features for this anchor time
       const fitbitFeats = await buildAllFeatures({
@@ -108,17 +118,6 @@ export async function tryFulfillPending(userId) {
         dateISO: dateStr,
         now: anchor,
       });
-
-      // Client-provided features (if any)
-      let clientFeats = {};
-      if (req.clientFeatures) {
-        try {
-          clientFeats = JSON.parse(req.clientFeatures);
-        } catch {
-          clientFeats = {};
-        }
-      }
-      const { lat, lon, ...restClientFeats } = clientFeats;
 
       // Geo/time/cluster/weather from lat/lon + anchor
       const geoTimeFeats = await buildGeoAndTimeFeatures({

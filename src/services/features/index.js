@@ -61,14 +61,12 @@ export async function buildAllFeatures({
   now = dayjs(),
 }) {
   // --- Tier 1 & Acute ---
-  console.log(now);
+
   // Step-derived
   const stepFeats = featuresFromSteps(stepsSeries, now);
   const sedentaryMinsLast3h = sedentaryMinsLast3hFromSteps(stepsSeries, now);
   const azmSpike30m = azmSpike30mFromSteps(stepsSeries, now);
   console.log(stepFeats);
-  console.log(sedentaryMinsLast3h);
-  console.log(azmSpike30m);
 
   // HR acute features
   const hrFeats = featuresFromHeartIntraday(heartSeries, rhr7dJson, now);
