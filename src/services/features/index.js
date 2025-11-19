@@ -61,7 +61,7 @@ export async function buildAllFeatures({
   now = dayjs(),
 }) {
   // --- Tier 1 & Acute ---
-
+  console.log(now);
   // Step-derived
   const stepFeats = featuresFromSteps(stepsSeries, now);
   const sedentaryMinsLast3h = sedentaryMinsLast3hFromSteps(stepsSeries, now);
