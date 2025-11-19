@@ -1,12 +1,33 @@
 import dayjs from "dayjs";
 
-// p.time is just a clock time from Fitbit: "HH:mm" or "HH:mm:ss"
+// p.time can be:
+// - "HH:mm"
+// - "HH:mm:ss"
+// - "YYYY-MM-DDTHH:mm:ss"
+// - "YYYY-MM-DDTHH:mm:ss:SS"
 function parseTimeToMinutes(timeStr) {
-  const parts = String(timeStr).split(":");
-  const h = parseInt(parts[0] || "0", 10) || 0;
-  const m = parseInt(parts[1] || "0", 10) || 0;
-  const s = parts[2] ? parseInt(parts[2], 10) || 0 : 0;
-  return h * 60 + m + s / 60;
+  const s = String(timeStr).trim();
+
+  let h = 0;
+  let m = 0;
+  let sec = 0;
+
+  if (s.length >= 19 && s[10] === "T") {
+    // Looks like "YYYY-MM-DDTHH:mm:ss..."
+    const clock = s.slice(11, 19); // "HH:mm:ss"
+    const parts = clock.split(":");
+    h = parseInt(parts[0] || "0", 10) || 0;
+    m = parseInt(parts[1] || "0", 10) || 0;
+    sec = parseInt(parts[2] || "0", 10) || 0;
+  } else {
+    // Plain "HH:mm" or "HH:mm:ss"
+    const parts = s.split(":");
+    h = parseInt(parts[0] || "0", 10) || 0;
+    m = parseInt(parts[1] || "0", 10) || 0;
+    sec = parts[2] ? parseInt(parts[2], 10) || 0 : 0;
+  }
+
+  return h * 60 + m + sec / 60;
 }
 
 // minutes since midnight on the *client* day (from `now`)
