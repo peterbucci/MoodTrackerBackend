@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import {
   parseTimeToMinutes,
   minutesSinceMidnight,
-} from "../utils/timeUtils.js";
+} from "../../utils/timeUtils.js";
 
 /**
  * Calculates calories out in the last 3 hours from intraday calories data.
