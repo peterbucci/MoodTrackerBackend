@@ -24,6 +24,23 @@ import {
   fetchNutritionDaily,
   fetchWaterDaily,
 } from "../services/fitbit/nutrition.ts";
+import { getAccessToken } from "../services/fitbit/tokens.js";
+import {
+  insertFeature,
+  insertLabel,
+  linkFeatureLabel,
+} from "../services/database.js";
+import { v4 as uuidv4 } from "uuid";
+import dayjs from "dayjs";
+import tzLookup from "tz-lookup";
+import {
+  pendingCount,
+  listPendingDetailed,
+} from "../db/queries/pendingRequests.js";
+import { fulfillOneRequest } from "../db/queries/fulfilledRequests.js";
+import { buildAllFeatures } from "../features/buildAllFeatures.js";
+import { buildGeoAndTimeFeatures } from "../features/buildGeoAndTimeFeatures.js";
+import { logFetchedFitbitData } from "../utils/logger.js";
 
 // Helper: persist label if request has one
 function maybeSaveLabelForFeature({ req, userId, featureId, nowTs }) {
