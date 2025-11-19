@@ -3,7 +3,7 @@
  * @param {*} timeStr - time string in various formats
  * @returns minutes since midnight
  */
-function parseTimeToMinutes(timeStr) {
+export function parseTimeToMinutes(timeStr) {
   const s = String(timeStr).trim(); // ensure it's a string and trim whitespace
 
   let h = 0;
@@ -34,6 +34,6 @@ function parseTimeToMinutes(timeStr) {
  * @param {*} now - dayjs object representing current time
  * @returns minutes since midnight
  */
-function minutesSinceMidnight(now) {
+export function minutesSinceMidnight(now) {
   return now.hour() * 60 + now.minute() + now.second() / 60;
 }
