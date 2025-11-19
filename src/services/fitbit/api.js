@@ -106,21 +106,7 @@ export async function fetchSteps7d(accessToken, endDateISO) {
   return r.json();
 }
 
-/**
- * Fetch Active Zone Minutes intraday for a given date at 1min resolution.
- * Shape (roughly):
- * {
- *   "activities-active-zone-minutes": [... daily summary ...],
- *   "activities-active-zone-minutes-intraday": {
- *      "dataset": [
- *        { "time": "00:00:00", "value": { "activeZoneMinutes": 0, "fatBurn": 0, "cardio": 0, "peak": 0 } },
- *        ...
- *      ]
- *   }
- * }
- */
 export async function fetchAzmIntraday(accessToken, dateISO) {
-  // detail-level can be 1min, 5min, 15min; 1min is best for your use case
   const url = `https://api.fitbit.com/1/user/-/activities/active-zone-minutes/date/${dateISO}/1d/1min.json`;
 
   const r = await fetch(url, {
@@ -131,35 +117,38 @@ export async function fetchAzmIntraday(accessToken, dateISO) {
   }
 
   const j = await r.json();
-  const dataset = j["activities-active-zone-minutes-intraday"]?.dataset || [];
 
-  // Normalize to a simple array with a real timestamp + zone breakdown
-  return dataset.map((d) => ({
-    time: `${dateISO}T${d.time}`, // e.g. "2025-11-19T14:03:00"
-    activeZoneMinutes: d.value?.activeZoneMinutes ?? 0,
-    fatBurn: d.value?.fatBurn ?? 0,
-    cardio: d.value?.cardio ?? 0,
-    peak: d.value?.peak ?? 0,
-  }));
+  // Fitbit can return either:
+  // - { "activities-active-zone-minutes-intraday": { dataset: [...] } }
+  // - or sometimes just an array on that key
+  let raw = j["activities-active-zone-minutes-intraday"];
+
+  let points = [];
+  if (!raw) {
+    points = [];
+  } else if (Array.isArray(raw)) {
+    // Already an array of { minute, value }
+    points = raw;
+  } else if (Array.isArray(raw.dataset)) {
+    // Standard intraday shape: { dataset: [ { minute, value }, ... ] }
+    points = raw.dataset;
+  } else {
+    points = [];
+  }
+
+  return points
+    .map((d) => ({
+      // Prefer full timestamp if present, otherwise fall back to HH:mm:ss + date
+      time: d.minute || (d.time ? `${dateISO}T${d.time}` : null),
+      activeZoneMinutes: d.value?.activeZoneMinutes ?? 0,
+      // These may not exist in your current response; keep as null for now
+      fatBurn: d.value?.fatBurn ?? null,
+      cardio: d.value?.cardio ?? null,
+      peak: d.value?.peak ?? null,
+    }))
+    .filter((p) => p.time !== null);
 }
 
-/**
- * Fetch HRV summary for a single date.
- * Fitbit: GET /1/user/-/hrv/date/{date}.json
- * Shape:
- * {
- *   "hrv": [
- *     {
- *       "dateTime": "YYYY-MM-DD",
- *       "value": {
- *         "dailyRmssd": 35.2,
- *         "deepRmssd": 40.1,
- *         ...
- *       }
- *     }
- *   ]
- * }
- */
 export async function fetchHrvDaily(accessToken, dateISO) {
   const url = `https://api.fitbit.com/1/user/-/hrv/date/${dateISO}.json`;
 
@@ -188,25 +177,6 @@ export async function fetchHrvRange(accessToken, startDateISO, endDateISO) {
   return r.json();
 }
 
-/**
- * Fetch Breathing Rate intraday for a given date.
- * Fitbit: GET /1/user/-/br/date/{date}/all.json
- * Typical shape:
- * {
- *   "br": [
- *     {
- *       "dateTime": "YYYY-MM-DD",
- *       "value": {
- *         "breathingRate": 13.2,
- *         "breathingRateValues": [
- *           { "time": "01:23:45", "value": 13.1 },
- *           ...
- *         ]
- *       }
- *     }
- *   ]
- * }
- */
 export async function fetchBreathingRateIntraday(accessToken, dateISO) {
   const url = `https://api.fitbit.com/1/user/-/br/date/${dateISO}/all.json`;
 
@@ -221,11 +191,15 @@ export async function fetchBreathingRateIntraday(accessToken, dateISO) {
   const dayEntry = Array.isArray(j.br)
     ? j.br.find((e) => e.dateTime === dateISO)
     : null;
-  const values = dayEntry?.value?.breathingRateValues || [];
 
-  // Normalize to a simple array with timestamp + breathingRate
-  return values.map((v) => ({
-    time: `${dateISO}T${v.time}`, // "YYYY-MM-DDTHH:mm:ss"
-    breathingRate: v.value ?? null,
-  }));
+  const value = dayEntry?.value || {};
+
+  // Return a single summary object instead of a time series
+  return {
+    date: dateISO,
+    brFull: value.fullSleepSummary?.breathingRate ?? null,
+    brDeep: value.deepSleepSummary?.breathingRate ?? null,
+    brRem: value.remSleepSummary?.breathingRate ?? null,
+    brLight: value.lightSleepSummary?.breathingRate ?? null,
+  };
 }
