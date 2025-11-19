@@ -21,7 +21,7 @@ import {
 } from "../services/fitbit/api.js";
 import { getAccessToken } from "../services/fitbit/oauth.js";
 import { buildAllFeatures } from "../services/features/index.js";
-import { buildGeoAndTimeFeatures } from "../services/features/geoTimeFeatures.js";
+import { buildGeoAndTimeFeatures } from "../services/features/buildGeoAndTimeFeatures.js";
 import tzLookup from "tz-lookup";
 
 // Helper: persist label if request has one
