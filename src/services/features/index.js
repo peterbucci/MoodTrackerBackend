@@ -23,6 +23,7 @@ import {
   recentActivityXTimeOfDayFeature,
   lowSleepHighActivityFlagFeature,
 } from "./crossFeatures.js";
+import { featuresFromAzm } from "./azmFeatures.js";
 
 /**
  * Simple composite acute index
@@ -50,6 +51,7 @@ function computeAcuteArousalIndex({
  */
 export async function buildAllFeatures({
   stepsSeries,
+  azmSeries,
   heartSeries, // from fetchHeartIntraday()
   dailyJson, // from fetchDailySummary()
   caloriesJson, // from fetchCaloriesIntraday()
@@ -65,7 +67,7 @@ export async function buildAllFeatures({
   // Step-derived
   const stepFeats = featuresFromSteps(stepsSeries, now);
   const sedentaryMinsLast3h = sedentaryMinsLast3hFromSteps(stepsSeries, now);
-  const azmSpike30m = azmSpike30mFromSteps(stepsSeries, now);
+  const azmFeats = featuresFromAzm(azmSeries, now);
 
   // HR acute features
   const hrFeats = featuresFromHeartIntraday(heartSeries, rhr7dJson, now);
@@ -169,5 +171,8 @@ export async function buildAllFeatures({
     // cross features:
     ...recentActivity,
     ...lowSleepHighActivity,
+
+    // Uncategorized:
+    ...azmFeats,
   };
 }

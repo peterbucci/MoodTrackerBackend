@@ -189,6 +189,7 @@ export async function tryFulfillPending(userId) {
       // Fitbit-derived features for this anchor time
       const fitbitFeats = await buildAllFeatures({
         stepsSeries,
+        azmSeries,
         heartSeries,
         dailyJson,
         caloriesJson,
