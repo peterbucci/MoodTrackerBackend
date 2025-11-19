@@ -61,7 +61,7 @@ export async function tryFulfillPending(userId) {
     const clientFeats = await JSON.parse(r.clientFeatures);
     const { lat, lon } = clientFeats;
     const tz = tzLookup(lat, lon);
-    const anchor = dayjs(date).tz(timezone, true);
+    const anchor = dayjs(r.createdAt).tz(timezone, true);
     const dateStr = anchor.format("YYYY-MM-DD");
     if (!groups.has(dateStr)) groups.set(dateStr, []);
     groups.get(dateStr).push(r);
