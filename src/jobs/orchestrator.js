@@ -23,7 +23,7 @@ import {
 import {
   fetchNutritionDaily,
   fetchWaterDaily,
-} from "../services/fitbit/nutrition.js";
+} from "../services/fitbit/nutrition.ts";
 
 // Helper: persist label if request has one
 function maybeSaveLabelForFeature({ req, userId, featureId, nowTs }) {
