@@ -38,7 +38,7 @@ import {
   pendingCount,
   listPendingDetailed,
 } from "../db/queries/requests.js";
-import { buildAllFeatures } from "../services/features/buildAllFeatures.js";
+import { buildAllFeatures } from "../services/features/index.js";
 import { buildGeoAndTimeFeatures } from "..services/features/buildGeoAndTimeFeatures.js";
 import { logFetchedFitbitData } from "../utils/logger.js";
 
