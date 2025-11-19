@@ -20,7 +20,7 @@ function sumWindow(series, now, minutes) {
   let s = 0;
   for (const p of series || []) {
     const tM = parseTimeToMinutes(p.time);
-    console.log(tM);
+    console.log(tM, startM, nowM);
     if (tM > startM && tM <= nowM) s += p.steps || 0;
   }
   return s;
