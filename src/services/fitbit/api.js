@@ -118,33 +118,30 @@ export async function fetchAzmIntraday(accessToken, dateISO) {
 
   const j = await r.json();
 
-  // Fitbit can return either:
-  // - { "activities-active-zone-minutes-intraday": { dataset: [...] } }
-  // - or sometimes just an array on that key
-  let raw = j["activities-active-zone-minutes-intraday"];
+  // Shape is:
+  // {
+  //   "activities-active-zone-minutes-intraday": [
+  //     {
+  //       "minutes": [
+  //         { "value": { "activeZoneMinutes": 0 }, "minute": "2025-11-19T00:00:00" },
+  //         ...
+  //       ],
+  //       "dateTime": "2025-11-19"
+  //     }
+  //   ]
+  // }
+  const intraday = j["activities-active-zone-minutes-intraday"];
+  let minutes = [];
 
-  let points = [];
-  if (!raw) {
-    points = [];
-  } else if (Array.isArray(raw)) {
-    // Already an array of { minute, value }
-    points = raw;
-  } else if (Array.isArray(raw.dataset)) {
-    // Standard intraday shape: { dataset: [ { minute, value }, ... ] }
-    points = raw.dataset;
-  } else {
-    points = [];
+  if (Array.isArray(intraday) && intraday.length > 0) {
+    minutes = Array.isArray(intraday[0].minutes) ? intraday[0].minutes : [];
   }
 
-  return points
+  // Normalize
+  return minutes
     .map((d) => ({
-      // Prefer full timestamp if present, otherwise fall back to HH:mm:ss + date
-      time: d.minute || (d.time ? `${dateISO}T${d.time}` : null),
+      time: d.minute || null,
       activeZoneMinutes: d.value?.activeZoneMinutes ?? 0,
-      // These may not exist in your current response; keep as null for now
-      fatBurn: d.value?.fatBurn ?? null,
-      cardio: d.value?.cardio ?? null,
-      peak: d.value?.peak ?? null,
     }))
     .filter((p) => p.time !== null);
 }
