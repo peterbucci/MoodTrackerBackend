@@ -1,82 +1,97 @@
 import dayjs from "dayjs";
 
-function timeOnSameDay(now, timeStr) {
-  const parts = timeStr.split(":");
-  const h = parseInt(parts[0], 10);
-  const m = parseInt(parts[1], 10);
-  const s = parts[2] ? parseInt(parts[2], 10) : 0;
-  return now.hour(h).minute(m).second(s).millisecond(0);
+// p.time is just a clock time from Fitbit: "HH:mm" or "HH:mm:ss"
+function parseTimeToMinutes(timeStr) {
+  const parts = String(timeStr).split(":");
+  const h = parseInt(parts[0] || "0", 10) || 0;
+  const m = parseInt(parts[1] || "0", 10) || 0;
+  const s = parts[2] ? parseInt(parts[2], 10) || 0 : 0;
+  return h * 60 + m + s / 60;
+}
+
+// minutes since midnight on the *client* day (from `now`)
+function minutesSinceMidnight(now) {
+  return now.hour() * 60 + now.minute() + now.second() / 60;
 }
 
 function sumWindow(series, now, minutes) {
-  const start = now.subtract(minutes, "minute");
+  const nowM = minutesSinceMidnight(now);
+  const startM = nowM - minutes;
   let s = 0;
-  console.log(now);
-  for (const p of series) {
-    const t = timeOnSameDay(now, p.time); // ⬅️ was dayjs(p.time)
-    if (t.isAfter(start) && !t.isAfter(now)) s += p.steps || 0;
+  for (const p of series || []) {
+    const tM = parseTimeToMinutes(p.time);
+    if (tM > startM && tM <= nowM) s += p.steps || 0;
   }
   return s;
 }
 
 function maxOneMinInLast(series, now, minutes) {
-  const start = now.subtract(minutes, "minute");
+  const nowM = minutesSinceMidnight(now);
+  const startM = nowM - minutes;
   let m = 0;
-  for (const p of series) {
-    const t = timeOnSameDay(now, p.time); // ⬅️
-    if (t.isAfter(start) && !t.isAfter(now)) m = Math.max(m, p.steps || 0);
+  for (const p of series || []) {
+    const tM = parseTimeToMinutes(p.time);
+    if (tM > startM && tM <= nowM) m = Math.max(m, p.steps || 0);
   }
   return m;
 }
 
 function longestZeroStreak(series, now, minutes) {
-  const start = now.subtract(minutes, "minute");
-  let run = 0,
-    best = 0;
-  for (const p of series) {
-    const t = timeOnSameDay(now, p.time); // ⬅️
-    if (t.isAfter(start) && !t.isAfter(now)) {
+  const nowM = minutesSinceMidnight(now);
+  const startM = nowM - minutes;
+  let run = 0;
+  let best = 0;
+  for (const p of series || []) {
+    const tM = parseTimeToMinutes(p.time);
+    if (tM > startM && tM <= nowM) {
       if ((p.steps || 0) === 0) {
         run += 1;
         best = Math.max(best, run);
-      } else run = 0;
+      } else {
+        run = 0;
+      }
     }
   }
   return best;
 }
 
 function slopeLast60(series, now) {
-  const start = now.subtract(60, "minute");
-  const pts = series
-    .filter((p) => {
-      const t = timeOnSameDay(now, p.time); // ⬅️
-      return t.isAfter(start) && !t.isAfter(now);
-    })
-    .map((p) => {
-      const t = timeOnSameDay(now, p.time); // ⬅️
-      return { x: t.valueOf(), y: p.steps || 0 };
-    });
+  const nowM = minutesSinceMidnight(now);
+  const startM = nowM - 60;
+
+  const pts = (series || [])
+    .map((p) => ({
+      x: parseTimeToMinutes(p.time),
+      y: p.steps || 0,
+    }))
+    .filter((pt) => pt.x > startM && pt.x <= nowM);
+
   if (pts.length < 2) return 0;
+
   const n = pts.length;
   const meanX = pts.reduce((a, b) => a + b.x, 0) / n;
   const meanY = pts.reduce((a, b) => a + b.y, 0) / n;
-  let num = 0,
-    den = 0;
+
+  let num = 0;
+  let den = 0;
   for (const { x, y } of pts) {
     num += (x - meanX) * (y - meanY);
     den += (x - meanX) * (x - meanX);
   }
-  return den === 0 ? 0 : (num / den) * 60 * 1000; // per-minute
+
+  return den === 0 ? 0 : num / den; // per-minute slope
 }
 
 // Sedentary minutes in last 3h using steps=0
 export function sedentaryMinsLast3hFromSteps(series, now = dayjs()) {
-  const start = now.subtract(180, "minute");
+  const nowM = minutesSinceMidnight(now);
+  const startM = nowM - 180;
   let mins = 0;
-  for (const p of series) {
-    const t = timeOnSameDay(now, p.time); // ⬅️
-    if (t.isAfter(start) && !t.isAfter(now))
+  for (const p of series || []) {
+    const tM = parseTimeToMinutes(p.time);
+    if (tM > startM && tM <= nowM) {
       mins += (p.steps || 0) === 0 ? 1 : 0;
+    }
   }
   return mins;
 }
@@ -84,24 +99,23 @@ export function sedentaryMinsLast3hFromSteps(series, now = dayjs()) {
 // azmSpike30m = activeMinutes(last 30m) - activeMinutes(previous 30m)
 export function azmSpike30mFromSteps(series, now = dayjs()) {
   const threshold = 60; // steps per minute to count as "active"
-  const end = now;
-  const mid = now.subtract(30, "minute");
-  const start = now.subtract(60, "minute");
+  const nowM = minutesSinceMidnight(now);
+  const midM = nowM - 30;
+  const startM = nowM - 60;
 
   let activePrev30 = 0;
   let activeLast30 = 0;
 
   for (const p of series || []) {
-    const t = timeOnSameDay(now, p.time); // ⬅️
+    const tM = parseTimeToMinutes(p.time);
+    if (tM <= startM || tM > nowM) continue;
 
-    if (!t.isAfter(start) || t.isAfter(end)) continue;
     const steps = p.steps || 0;
-    const isActive = steps >= threshold;
-    if (!isActive) continue;
+    if (steps < threshold) continue;
 
-    if (t.isAfter(start) && !t.isAfter(mid)) {
+    if (tM > startM && tM <= midM) {
       activePrev30 += 1;
-    } else if (t.isAfter(mid) && !t.isAfter(end)) {
+    } else if (tM > midM && tM <= nowM) {
       activeLast30 += 1;
     }
   }

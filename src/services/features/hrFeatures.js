@@ -1,12 +1,17 @@
 import dayjs from "dayjs";
 
-function timeOnSameDay(now, timeStr) {
-  // p.time is "HH:mm:ss"
-  const parts = timeStr.split(":");
-  const h = parseInt(parts[0], 10);
-  const m = parseInt(parts[1], 10);
-  const s = parts[2] ? parseInt(parts[2], 10) : 0; // dayjs is immutable, this returns a *new* dayjs, doesn't mutate now
-  return now.hour(h).minute(m).second(s).millisecond(0);
+// p.time is just a clock time from Fitbit: "HH:mm" or "HH:mm:ss"
+function parseTimeToMinutes(timeStr) {
+  const parts = String(timeStr).split(":");
+  const h = parseInt(parts[0] || "0", 10) || 0;
+  const m = parseInt(parts[1] || "0", 10) || 0;
+  const s = parts[2] ? parseInt(parts[2], 10) || 0 : 0;
+  return h * 60 + m + s / 60;
+}
+
+// minutes since midnight on the *client* day (from `now`)
+function minutesSinceMidnight(now) {
+  return now.hour() * 60 + now.minute() + now.second() / 60;
 }
 
 /**
@@ -14,19 +19,29 @@ function timeOnSameDay(now, timeStr) {
  * offsetMinutes lets you shift the window back (for "prior" periods).
  */
 function avgWindow(series, now, minutes, offsetMinutes = 0) {
-  const end = now.subtract(offsetMinutes, "minute");
-  const start = end.subtract(minutes, "minute");
+  const endM = minutesSinceMidnight(now) - offsetMinutes;
+  const startM = endM - minutes;
   let sum = 0;
   let count = 0;
+
   for (const p of series || []) {
-    const t = timeOnSameDay(now, p.time);
-    if (!t.isAfter(start) || t.isAfter(end)) continue;
-    const hr = typeof p.hr === "number" ? p.hr : null;
+    const tM = parseTimeToMinutes(p.time);
+    if (tM <= startM || tM > endM) continue;
+
+    // primary: p.hr, fallback: p.value if that's how Fitbit data is shaped
+    let hr = null;
+    if (typeof p.hr === "number") {
+      hr = p.hr;
+    } else if (typeof p.value === "number") {
+      hr = p.value;
+    }
+
     if (hr != null) {
       sum += hr;
       count += 1;
     }
   }
+
   return count > 0 ? sum / count : null;
 }
 
