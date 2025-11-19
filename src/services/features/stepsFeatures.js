@@ -1,7 +1,10 @@
 import dayjs from "dayjs";
 
 function timeOnSameDay(now, timeStr) {
-  const [h, m, s] = timeStr.split(":").map((n) => parseInt(n, 10) || 0);
+  const parts = timeStr.split(":");
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  const s = parts[2] ? parseInt(parts[2], 10) : 0;
   return now.hour(h).minute(m).second(s).millisecond(0);
 }
 
