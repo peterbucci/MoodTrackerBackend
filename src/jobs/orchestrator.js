@@ -29,7 +29,7 @@ import {
   insertFeature,
   insertLabel,
   linkFeatureLabel,
-} from "../services/database.js";
+} from "../db/queries/features.js";
 import { v4 as uuidv4 } from "uuid";
 import dayjs from "dayjs";
 import tzLookup from "tz-lookup";
