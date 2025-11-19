@@ -200,3 +200,207 @@ export async function fetchBreathingRateIntraday(accessToken, dateISO) {
     brLight: value.lightSleepSummary?.breathingRate ?? null,
   };
 }
+
+export async function fetchSpo2Daily(accessToken, dateISO) {
+  const url = `https://api.fitbit.com/1/user/-/spo2/date/${dateISO}.json`;
+
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!r.ok) {
+    throw new Error(`Spo2Daily HTTP ${r.status}: ${await r.text()}`);
+  }
+
+  const j = await r.json();
+  // j = { dateTime, value: { avg, min, max } }
+
+  return {
+    date: j.dateTime || dateISO,
+    spo2Avg: j.value?.avg ?? null,
+    spo2Min: j.value?.min ?? null,
+    spo2Max: j.value?.max ?? null,
+  };
+}
+
+export async function fetchSpo2Range(accessToken, startDateISO, endDateISO) {
+  const url = `https://api.fitbit.com/1/user/-/spo2/date/${startDateISO}/${endDateISO}.json`;
+
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!r.ok) {
+    throw new Error(`Spo2Range HTTP ${r.status}: ${await r.text()}`);
+  }
+
+  const j = await r.json();
+  // j = [ { dateTime, value: { avg, min, max } }, ... ]
+
+  const arr = Array.isArray(j) ? j : [];
+
+  return arr.map((e) => ({
+    date: e.dateTime,
+    spo2Avg: e.value?.avg ?? null,
+    spo2Min: e.value?.min ?? null,
+    spo2Max: e.value?.max ?? null,
+  }));
+}
+
+export async function fetchTempSkinDaily(accessToken, dateISO) {
+  const url = `https://api.fitbit.com/1/user/-/temp/skin/date/${dateISO}.json`;
+
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!r.ok) {
+    throw new Error(`TempSkinDaily HTTP ${r.status}: ${await r.text()}`);
+  }
+
+  const j = await r.json();
+  const arr = Array.isArray(j.tempSkin) ? j.tempSkin : [];
+
+  // Find the entry for this date (there should usually be at most one)
+  const entry = arr.find((e) => e.dateTime === dateISO) || arr[0] || null;
+
+  const nightlyRelative = entry?.value?.nightlyRelative ?? null;
+
+  return {
+    date: dateISO,
+    tempSkinNightlyRelative: nightlyRelative,
+    logType: entry?.logType ?? null,
+  };
+}
+
+export async function fetchTempSkinRange(
+  accessToken,
+  startDateISO,
+  endDateISO
+) {
+  const url = `https://api.fitbit.com/1/user/-/temp/skin/date/${startDateISO}/${endDateISO}.json`;
+
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!r.ok) {
+    throw new Error(`TempSkinRange HTTP ${r.status}: ${await r.text()}`);
+  }
+
+  const j = await r.json();
+  const arr = Array.isArray(j.tempSkin) ? j.tempSkin : [];
+
+  return arr.map((e) => ({
+    date: e.dateTime,
+    tempSkinNightlyRelative: e.value?.nightlyRelative ?? null,
+    logType: e.logType ?? null,
+  }));
+}
+
+export async function fetchNutritionDaily(accessToken, dateISO) {
+  const url = `https://api.fitbit.com/1/user/-/foods/log/date/${dateISO}.json`;
+
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!r.ok) {
+    throw new Error(`NutritionDaily HTTP ${r.status}: ${await r.text()}`);
+  }
+
+  const j = await r.json();
+
+  const foods = Array.isArray(j.foods) ? j.foods : [];
+  const summary = j.summary || {};
+
+  const normalizedFoods = foods.map((f) => ({
+    logId: f.logId ?? null,
+    logDate: f.logDate ?? null,
+    name: f.loggedFood?.name ?? null,
+    brand: f.loggedFood?.brand ?? null,
+    calories: f.nutritionalValues?.calories ?? null,
+    carbs: f.nutritionalValues?.carbs ?? null,
+    fat: f.nutritionalValues?.fat ?? null,
+    fiber: f.nutritionalValues?.fiber ?? null,
+    protein: f.nutritionalValues?.protein ?? null,
+    sodium: f.nutritionalValues?.sodium ?? null,
+    amount: f.loggedFood?.amount ?? null,
+    unitId: f.loggedFood?.unit?.id ?? null,
+    unitName: f.loggedFood?.unit?.name ?? null,
+    mealTypeId: f.loggedFood?.mealTypeId ?? null,
+  }));
+
+  return {
+    date: dateISO,
+    foods: normalizedFoods,
+    nutritionSummary: {
+      calories: summary.calories ?? 0,
+      carbs: summary.carbs ?? 0,
+      fat: summary.fat ?? 0,
+      fiber: summary.fiber ?? 0,
+      protein: summary.protein ?? 0,
+      sodium: summary.sodium ?? 0,
+      water: summary.water ?? 0, // ml-ish
+    },
+  };
+}
+
+export async function fetchWaterDaily(accessToken, dateISO) {
+  const url = `https://api.fitbit.com/1/user/-/foods/log/water/date/${dateISO}.json`;
+
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!r.ok) {
+    throw new Error(`WaterDaily HTTP ${r.status}: ${await r.text()}`);
+  }
+
+  const j = await r.json();
+
+  const waterLogs = Array.isArray(j.water) ? j.water : [];
+  const summary = j.summary || {};
+
+  const normalizedLogs = waterLogs.map((w) => ({
+    logId: w.logId ?? null,
+    amount: w.amount ?? null,
+    unit: w.unit ?? null,
+    logDate: w.logDate ?? dateISO,
+  }));
+
+  return {
+    date: dateISO,
+    waterLogs: normalizedLogs,
+    waterTotal: summary.water ?? 0,
+  };
+}
+
+export async function fetchHrvIntraday(accessToken, dateISO) {
+  const url = `https://api.fitbit.com/1/user/-/hrv/date/${dateISO}/all.json`;
+
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!r.ok) {
+    throw new Error(`HRVIntraday HTTP ${r.status}: ${await r.text()}`);
+  }
+
+  const j = await r.json();
+  const arr = Array.isArray(j.hrv) ? j.hrv : [];
+
+  const dayEntry = arr.find((e) => e.dateTime === dateISO) || arr[0] || null;
+
+  const minutes = Array.isArray(dayEntry?.minutes) ? dayEntry.minutes : [];
+
+  return minutes
+    .map((m) => ({
+      time: m.minute || null, // already full ISO-ish timestamp
+      rmssd: m.value?.rmssd ?? null,
+      coverage: m.value?.coverage ?? null,
+      hf: m.value?.hf ?? null,
+      lf: m.value?.lf ?? null,
+    }))
+    .filter((p) => p.time !== null);
+}

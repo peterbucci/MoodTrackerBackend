@@ -1,32 +1,25 @@
-import dayjs from "dayjs";
-import { v4 as uuidv4 } from "uuid";
-
-import {
-  pendingCount,
-  listPendingDetailed,
-  fulfillOneRequest,
-} from "../db/queries/requests.js";
-import { insertFeature } from "../db/queries/features.js";
-import { insertLabel, linkFeatureLabel } from "../db/queries/labels.js";
-
 import {
   fetchStepsIntraday,
-  fetchHeartIntraday,
   fetchDailySummary,
   fetchCaloriesIntraday,
   fetchMostRecentExercise,
-  fetchSleepRange,
-  fetchRestingHr7d,
   fetchSteps7d,
   fetchAzmIntraday,
-  fetchBreathingRateIntraday,
+} from "../services/fitbit/activity.js";
+import {
+  fetchHeartIntraday,
+  fetchRestingHr7d,
   fetchHrvDaily,
-} from "../services/fitbit/api.js";
-import { getAccessToken } from "../services/fitbit/oauth.js";
-import { buildAllFeatures } from "../services/features/index.js";
-import { buildGeoAndTimeFeatures } from "../services/features/buildGeoAndTimeFeatures.js";
-import tzLookup from "tz-lookup";
-import { logFetchedFitbitData } from "../utils/logger.js";
+  fetchHrvIntraday,
+} from "../services/fitbit/heart.js";
+import { fetchSleepRange } from "../services/fitbit/sleep.js";
+import { fetchBreathingRateIntraday } from "../services/fitbit/respiration.js";
+import { fetchSpo2Daily } from "../services/fitbit/spo2.js";
+import { fetchTempSkinDaily } from "../services/fitbit/temperature.js";
+import {
+  fetchNutritionDaily,
+  fetchWaterDaily,
+} from "../services/fitbit/nutrition.js";
 
 // Helper: persist label if request has one
 function maybeSaveLabelForFeature({ req, userId, featureId, nowTs }) {
@@ -109,18 +102,28 @@ export async function tryFulfillPending(userId) {
       sleepJson,
       rhr7dJson,
       steps7dJson,
+      spo2Daily,
+      tempSkinDaily,
+      nutritionDaily,
+      waterDaily,
+      hrvIntraday,
     ] = await Promise.all([
       fetchStepsIntraday(accessToken, dateStr),
       fetchHeartIntraday(accessToken, dateStr),
-      fetchAzmIntraday(accessToken, dateStr), // NEW: AZM intraday
-      fetchBreathingRateIntraday(accessToken, dateStr), // NEW: breathing intraday
-      fetchHrvDaily(accessToken, dateStr), // NEW: HRV daily
+      fetchAzmIntraday(accessToken, dateStr),
+      fetchBreathingRateIntraday(accessToken, dateStr),
+      fetchHrvDaily(accessToken, dateStr),
       fetchDailySummary(accessToken, dateStr),
       fetchCaloriesIntraday(accessToken, dateStr),
       fetchMostRecentExercise(accessToken, dateStr),
       fetchSleepRange(accessToken, dateStr, 7),
       fetchRestingHr7d(accessToken, dateStr),
       fetchSteps7d(accessToken, dateStr),
+      fetchSpo2Daily(accessToken, dateStr),
+      fetchTempSkinDaily(accessToken, dateStr),
+      fetchNutritionDaily(accessToken, dateStr),
+      fetchWaterDaily(accessToken, dateStr),
+      fetchHrvIntraday(accessToken, dateStr),
     ]);
 
     for (const req of requests) {
@@ -136,6 +139,11 @@ export async function tryFulfillPending(userId) {
         sleepJson,
         rhr7dJson,
         steps7dJson,
+        spo2Daily,
+        tempSkinDaily,
+        nutritionDaily,
+        waterDaily,
+        hrvIntraday,
       });
 
       // Client-provided features
