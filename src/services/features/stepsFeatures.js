@@ -11,9 +11,9 @@ function timeOnSameDay(now, timeStr) {
 function sumWindow(series, now, minutes) {
   const start = now.subtract(minutes, "minute");
   let s = 0;
+  console.log(now);
   for (const p of series) {
     const t = timeOnSameDay(now, p.time); // ⬅️ was dayjs(p.time)
-    console.log(t);
     if (t.isAfter(start) && !t.isAfter(now)) s += p.steps || 0;
   }
   return s;
