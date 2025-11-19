@@ -68,6 +68,7 @@ export async function buildAllFeatures({
   const stepFeats = featuresFromSteps(stepsSeries, now);
   const sedentaryMinsLast3h = sedentaryMinsLast3hFromSteps(stepsSeries, now);
   const azmFeats = featuresFromAzm(azmSeries, now);
+  const azmSpike30m = azmFeats.azmSpike30m;
 
   // HR acute features
   const hrFeats = featuresFromHeartIntraday(heartSeries, rhr7dJson, now);
