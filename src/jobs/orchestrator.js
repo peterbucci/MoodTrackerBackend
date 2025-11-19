@@ -25,11 +25,8 @@ import {
   fetchWaterDaily,
 } from "../services/fitbit/nutrition.ts";
 import { getAccessToken } from "../services/fitbit/oauth.js";
-import {
-  insertFeature,
-  insertLabel,
-  linkFeatureLabel,
-} from "../db/queries/features.js";
+import { insertFeature } from "../db/queries/features.js";
+import { insertLabel, linkFeatureLabel } from "../db/queries/labels.js";
 import { v4 as uuidv4 } from "uuid";
 import dayjs from "dayjs";
 import tzLookup from "tz-lookup";
