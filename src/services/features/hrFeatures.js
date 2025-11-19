@@ -1,43 +1,16 @@
 import dayjs from "dayjs";
-
-// p.time can be:
-// - "HH:mm"
-// - "HH:mm:ss"
-// - "YYYY-MM-DDTHH:mm:ss"
-// - "YYYY-MM-DDTHH:mm:ss:SS"
-function parseTimeToMinutes(timeStr) {
-  const s = String(timeStr).trim();
-
-  let h = 0;
-  let m = 0;
-  let sec = 0;
-
-  if (s.length >= 19 && s[10] === "T") {
-    // Looks like "YYYY-MM-DDTHH:mm:ss..."
-    const clock = s.slice(11, 19); // "HH:mm:ss"
-    const parts = clock.split(":");
-    h = parseInt(parts[0] || "0", 10) || 0;
-    m = parseInt(parts[1] || "0", 10) || 0;
-    sec = parseInt(parts[2] || "0", 10) || 0;
-  } else {
-    // Plain "HH:mm" or "HH:mm:ss"
-    const parts = s.split(":");
-    h = parseInt(parts[0] || "0", 10) || 0;
-    m = parseInt(parts[1] || "0", 10) || 0;
-    sec = parts[2] ? parseInt(parts[2], 10) || 0 : 0;
-  }
-
-  return h * 60 + m + sec / 60;
-}
-
-// minutes since midnight on the *client* day (from `now`)
-function minutesSinceMidnight(now) {
-  return now.hour() * 60 + now.minute() + now.second() / 60;
-}
+import {
+  parseTimeToMinutes,
+  minutesSinceMidnight,
+} from "../../utils/timeUtils.js";
 
 /**
  * Compute averages over sliding windows in minutes.
- * offsetMinutes lets you shift the window back (for "prior" periods).
+ * @param {*} series - time series of HR data
+ * @param {*} now - current time
+ * @param {*} minutes - window size in minutes
+ * @param {*} offsetMinutes - offset to shift the window back
+ * @returns average HR within the window
  */
 function avgWindow(series, now, minutes, offsetMinutes = 0) {
   const endM = minutesSinceMidnight(now) - offsetMinutes;
@@ -45,20 +18,14 @@ function avgWindow(series, now, minutes, offsetMinutes = 0) {
   let sum = 0;
   let count = 0;
 
+  // Iterate through the series to compute sum and count
   for (const p of series || []) {
     const tM = parseTimeToMinutes(p.time);
+    // Check if the time is within the window
     if (tM <= startM || tM > endM) continue;
-
-    // primary: p.hr, fallback: p.value if that's how Fitbit data is shaped
-    let hr = null;
+    // Only include valid HR values
     if (typeof p.hr === "number") {
-      hr = p.hr;
-    } else if (typeof p.value === "number") {
-      hr = p.value;
-    }
-
-    if (hr != null) {
-      sum += hr;
+      sum += p.hr;
       count += 1;
     }
   }
@@ -66,26 +33,37 @@ function avgWindow(series, now, minutes, offsetMinutes = 0) {
   return count > 0 ? sum / count : null;
 }
 
-// hrZNow: how elevated current HR is vs resting baseline.
-//   0.0   → at baseline
-//   0.2   → 20% above resting
-//   -0.1  → 10% below resting
+/**
+ * Compute relative elevation of current HR vs resting HR baseline from 7-day data.
+ * In other words, how much above or below resting HR is the current HR, expressed as a fraction of resting HR.
+ *  - 0.0   → at baseline
+ *  - 0.2   → 20% above resting
+ *  - -0.1  → 10% below resting
+ * @param {*} rhr7dJson - JSON object with 7-day resting heart rate data
+ * @param {*} hrNow - current heart rate
+ * @returns relative elevation of current HR vs resting baseline
+ */
 function computeHrZNow(rhr7dJson, hrNow) {
   if (hrNow == null) return null;
 
+  // Extract resting HR values from 7-day JSON
   const arr = Array.isArray(rhr7dJson?.["activities-heart"])
     ? rhr7dJson["activities-heart"]
     : [];
 
+  // Pull out all restingHeartRate values
   const values = arr
     .map((e) => e?.value?.restingHeartRate)
     .filter((v) => typeof v === "number");
 
+  // if no valid resting HR values, return null
   if (values.length < 1) return null;
 
+  // Compute mean resting HR
   const n = values.length;
   const mean = values.reduce((acc, v) => acc + v, 0) / n;
 
+  // Avoid division by zero or negative means
   if (!mean || mean <= 0) return null;
 
   // Relative elevation vs resting baseline
@@ -94,29 +72,36 @@ function computeHrZNow(rhr7dJson, hrNow) {
 
 /**
  * Build acute HR features from intraday HR + RHR 7d baseline.
- *
  * - hrAvgLast5m
  * - hrAvgLast15m
  * - hrDelta5m  (last 5m - prior 5m)
  * - hrDelta15m (last 15m - prior 15m)
  * - hrZNow     (z-score vs 7d resting HR baseline)
+ * @param {*} heartSeries - time series of HR data
+ * @param {*} rhr7dJson - JSON object with 7-day resting heart rate data
+ * @param {*} now - current time
+ * @returns object with computed HR features
  */
 export function featuresFromHeartIntraday(
   heartSeries,
   rhr7dJson,
   now = dayjs()
 ) {
+  // Compute averages for last windows
   const hrAvgLast5m = avgWindow(heartSeries, now, 5, 0);
   const hrAvgLast15m = avgWindow(heartSeries, now, 15, 0);
 
+  // Compute prior windows for deltas
   const prior5 = avgWindow(heartSeries, now, 5, 5);
   const prior15 = avgWindow(heartSeries, now, 15, 15);
 
+  // Compute deltas
   const hrDelta5m =
     hrAvgLast5m != null && prior5 != null ? hrAvgLast5m - prior5 : null;
   const hrDelta15m =
     hrAvgLast15m != null && prior15 != null ? hrAvgLast15m - prior15 : null;
 
+  // Compute hrZNow
   const hrZNow = computeHrZNow(rhr7dJson, hrAvgLast5m ?? hrAvgLast15m ?? null);
 
   return {

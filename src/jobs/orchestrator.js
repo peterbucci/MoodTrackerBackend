@@ -47,6 +47,7 @@ function maybeSaveLabelForFeature({ req, userId, featureId, nowTs }) {
 }
 
 export async function tryFulfillPending(userId) {
+  // Fix this
   const pc = pendingCount.get(userId)?.c ?? 0;
   if (pc === 0) return { ok: true, didFetch: false, reason: "no-pending" };
 
@@ -113,7 +114,7 @@ export async function tryFulfillPending(userId) {
     ]);
 
     for (const req of requests) {
-      // Client-provided features (if any)
+      // Client-provided features
       let clientFeats = {};
       if (req.clientFeatures) {
         try {

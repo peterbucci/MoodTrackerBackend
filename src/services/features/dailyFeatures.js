@@ -1,9 +1,15 @@
 import dayjs from "dayjs";
 
+/**
+ * Compute daily features from Fitbit API /activities/summary endpoint.
+ * @param {*} summaryJson - Fitbit daily summary JSON
+ * @param {*} now - dayjs() object for "now"
+ * @returns daily features
+ */
 export function featuresFromDailySummary(summaryJson, now = dayjs()) {
   const summary = summaryJson?.summary || {};
 
-  // 1) Try real Active Zone Minutes if Fitbit ever starts sending it
+  // Try real Active Zone Minutes
   let azmToday = null;
   if (summary.activeZoneMinutes?.totalMinutes != null) {
     azmToday = summary.activeZoneMinutes.totalMinutes;
@@ -11,8 +17,7 @@ export function featuresFromDailySummary(summaryJson, now = dayjs()) {
     typeof summary.fairlyActiveMinutes === "number" ||
     typeof summary.veryActiveMinutes === "number"
   ) {
-    // 2) Fallback: approximate AZM from legacy fields
-    // Simple version: count fairly+very active minutes as "zone" time
+    // Fallback: approximate AZM from fairly+very active mins as "zone" time
     azmToday =
       (summary.fairlyActiveMinutes || 0) + (summary.veryActiveMinutes || 0);
   }

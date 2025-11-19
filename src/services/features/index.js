@@ -61,26 +61,20 @@ export async function buildAllFeatures({
   now = dayjs(),
 }) {
   // --- Tier 1 & Acute ---
-  console.log(now);
+
   // Step-derived
   const stepFeats = featuresFromSteps(stepsSeries, now);
   const sedentaryMinsLast3h = sedentaryMinsLast3hFromSteps(stepsSeries, now);
   const azmSpike30m = azmSpike30mFromSteps(stepsSeries, now);
-  console.log(stepFeats);
 
   // HR acute features
   const hrFeats = featuresFromHeartIntraday(heartSeries, rhr7dJson, now);
-  console.log(hrFeats);
 
   // Daily summary-derived
   const dailyFeats = featuresFromDailySummary(dailyJson, now);
 
   // Intraday calories 3h
-  const caloriesOutLast3h = caloriesOutLast3hFromIntraday(
-    caloriesJson,
-    dateISO,
-    now
-  );
+  const caloriesOutLast3h = caloriesOutLast3hFromIntraday(caloriesJson, now);
 
   // Time since last exercise + 90m post-ex window
   const timeSinceLastExerciseMin = timeSinceLastExerciseMinFromList(

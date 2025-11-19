@@ -30,7 +30,6 @@ router.post("/requests", async (req, res) => {
   const id = uuidv4();
 
   const { clientFeatures, label, category } = req.body;
-  console.log(clientFeatures);
   if (
     clientFeatures == null &&
     (label == null || label === "") &&

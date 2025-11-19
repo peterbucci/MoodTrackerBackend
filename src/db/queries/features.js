@@ -48,3 +48,21 @@ export const getFeatureWithLabel = db.prepare(`
   LEFT JOIN labels l ON l.id = fl.labelId
   WHERE f.id = ? AND f.userId = ?
 `);
+
+export const deleteLink = db.prepare(`
+  DELETE FROM feature_labels WHERE featureId = ?;
+`);
+
+export const deleteLabel = db.prepare(`
+  DELETE FROM labels WHERE id = ? AND userId = ?;
+`);
+
+export const deleteFeatureOnly = db.prepare(`
+  DELETE FROM features WHERE id = ? AND userId = ?;
+`);
+
+export const getLabelIdForFeature = db.prepare(`
+  SELECT labelId
+  FROM feature_labels
+  WHERE featureId = ?;
+`);

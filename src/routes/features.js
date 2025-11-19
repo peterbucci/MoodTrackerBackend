@@ -1,6 +1,12 @@
 import express from "express";
 import { getAnyUser, getAnyTokenRow } from "../db/queries/tokens.js";
 import { listFeatures, getFeatureWithLabel } from "../db/queries/features.js";
+import {
+  deleteLink,
+  deleteLabel,
+  deleteFeatureOnly,
+  getLabelIdForFeature,
+} from "../db/queries/features.js";
 
 const router = express.Router();
 
@@ -52,6 +58,35 @@ router.get("/features/:id", (req, res) => {
       data,
     },
     label,
+  });
+});
+
+router.delete("/features/:id", (req, res) => {
+  const featureId = req.params.id;
+  const user = getAnyUser.get();
+  if (!user) return res.status(401).json({ ok: false, error: "no user" });
+
+  const userId = user.userId;
+
+  // 1. get labelId for this feature (if exists)
+  const row = getLabelIdForFeature.get(featureId);
+  const labelId = row?.labelId || null;
+
+  // 2. delete link
+  deleteLink.run(featureId);
+
+  // 3. delete label
+  if (labelId) {
+    deleteLabel.run(labelId, userId);
+  }
+
+  // 4. delete feature
+  deleteFeatureOnly.run(featureId, userId);
+
+  return res.json({
+    ok: true,
+    deletedFeatureId: featureId,
+    deletedLabelId: labelId,
   });
 });
 
