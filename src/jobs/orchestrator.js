@@ -68,9 +68,10 @@ export async function tryFulfillPending(userId) {
     byDate.get(dateStr).push({ r, clientFeats, anchor });
   }
 
+  const accessToken = await getAccessToken(userId);
+
   // SECOND PASS: process groups
   for (const [dateStr, list] of byDate.entries()) {
-    const accessToken = getAccessToken(userId);
     const [
       stepsSeries,
       heartSeries,
