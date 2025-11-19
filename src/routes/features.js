@@ -108,3 +108,5 @@ router.get("/debug/token", (req, res) => {
     refreshToken: row.refreshToken,
   });
 });
+
+export default router;
