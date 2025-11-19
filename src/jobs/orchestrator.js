@@ -123,6 +123,12 @@ export async function tryFulfillPending(userId) {
       }
       const { lat, lon, anchorMs, ...restClientFeats } = clientFeats;
 
+      // Ensure timezone lookup works even if lat/lon missing
+      const tz =
+        typeof lat === "number" && typeof lon === "number"
+          ? tzLookup(lat, lon)
+          : "UTC";
+
       const anchor = dayjs().tz(tz);
 
       // Fitbit-derived features for this anchor time
