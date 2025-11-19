@@ -67,23 +67,24 @@ export async function tryFulfillPending(userId) {
       clientFeats = JSON.parse(r.clientFeatures) || {};
     } catch {}
 
-    const { lat, lon } = clientFeats;
+    const { lat, lon, anchorMs } = clientFeats;
 
-    // Ensure timezone lookup works even if lat/lon missing
     const tz =
       typeof lat === "number" && typeof lon === "number"
         ? tzLookup(lat, lon)
         : "UTC";
 
-    // USE SERVER TIME, NEVER CLIENT TIME
-    const anchor = dayjs().tz(tz);
+    const base =
+      typeof anchorMs === "number" && Number.isFinite(anchorMs)
+        ? dayjs(anchorMs)
+        : dayjs();
 
+    const anchor = base.tz(tz);
     const dateStr = anchor.format("YYYY-MM-DD");
 
     if (!groups.has(dateStr)) groups.set(dateStr, []);
     groups.get(dateStr).push(r);
   }
-
   const accessToken = await getAccessToken(userId);
   let total = 0;
 
@@ -123,14 +124,17 @@ export async function tryFulfillPending(userId) {
       }
       const { lat, lon, anchorMs, ...restClientFeats } = clientFeats;
 
-      // Ensure timezone lookup works even if lat/lon missing
       const tz =
         typeof lat === "number" && typeof lon === "number"
           ? tzLookup(lat, lon)
           : "UTC";
 
-      const anchor = dayjs().tz(tz);
+      const base =
+        typeof anchorMs === "number" && Number.isFinite(anchorMs)
+          ? dayjs(anchorMs)
+          : dayjs();
 
+      const anchor = base.tz(tz);
       // Fitbit-derived features for this anchor time
       const fitbitFeats = await buildAllFeatures({
         stepsSeries,
