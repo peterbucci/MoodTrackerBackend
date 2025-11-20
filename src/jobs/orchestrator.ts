@@ -217,7 +217,7 @@ export async function tryFulfillPending(userId: string) {
       // 🔹 Per-request exercise fetch using full timestamp
       const exerciseJson = await fetchMostRecentExercise(
         accessToken,
-        anchor.toISOString() // full timestamp, not just dateStr
+        anchor.format("YYYY-MM-DDTHH:mm:ss.SSS") // no Z, fits Fitbit's pattern
       );
 
       // ---- Build all Fitbit-derived features with *per-request* anchor
