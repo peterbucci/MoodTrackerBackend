@@ -125,13 +125,20 @@ export async function fetchBreathingRateRange(
   endDateISO: string
 ): Promise<BrDaily[]> {
   const url = `https://api.fitbit.com/1/user/-/br/date/${startDateISO}/${endDateISO}.json`;
+
   const r = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
+
   if (!r.ok) {
     throw new Error(`BreathingRateRange HTTP ${r.status}: ${await r.text()}`);
   }
-  const arr: any[] = (await r.json()) as any[];
+
+  const j: any = await r.json();
+
+  // Fitbit returns: { br: [...] }
+  const arr = Array.isArray(j.br) ? j.br : [];
+
   return arr.map((e: any) => ({
     date: e.dateTime,
     brFull: e.value?.breathingRate ?? null,
