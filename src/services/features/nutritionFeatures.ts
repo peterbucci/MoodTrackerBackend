@@ -67,35 +67,6 @@ function safeNumber(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
-/**
- * Compute hours since last meal based on the most recent food log.
- *
- * NOTE: Fitbit's /foods/log/date endpoint only guarantees a date (logDate).
- * If you later add a more precise timestamp (e.g. logDateTime), this logic
- * will automatically start using it.
- */
-export function timeSinceLastMealHoursFromFoods(
-  foods: NormalizedFoodLog[],
-  now: Dayjs = dayjs()
-): number | null {
-  if (!foods || foods.length === 0) return null;
-
-  const candidates = foods
-    .map((f) => f.logDateTime || f.logDate)
-    .filter((ts): ts is string => typeof ts === "string")
-    .map((ts) => dayjs(ts))
-    .filter((d) => d.isValid());
-
-  if (!candidates.length) return null;
-
-  const lastMeal = candidates.reduce((latest, d) =>
-    d.isAfter(latest) ? d : latest
-  );
-
-  const diffHours = now.diff(lastMeal, "hour", true);
-  return diffHours >= 0 ? diffHours : 0;
-}
-
 /* ---------------------------------------------
    Main feature builder
 --------------------------------------------- */
@@ -153,8 +124,6 @@ export function buildNutritionFeatureBlock(
     }
   }
 
-  const timeSinceLastMealHours = timeSinceLastMealHoursFromFoods(foods, now);
-
   return {
     totalCaloriesIntake,
     totalCarbsGrams,
@@ -164,6 +133,5 @@ export function buildNutritionFeatureBlock(
     totalSodiumMg,
     totalWaterMl,
     mealsLoggedCount,
-    timeSinceLastMealHours,
   };
 }
