@@ -5,110 +5,226 @@ import {
 } from "../../utils/timeUtils.js";
 
 /**
- * Compute averages over sliding windows in minutes.
- * @param {*} series - time series of HR data
- * @param {*} now - current time
- * @param {*} minutes - window size in minutes
- * @param {*} offsetMinutes - offset to shift the window back
- * @returns average HR within the window
+ * Collect HR samples (x = minutes since midnight, y = hr) in a window.
  */
-function avgWindow(series, now, minutes, offsetMinutes = 0) {
+function collectHrWindow(series, now, minutes, offsetMinutes = 0) {
   const endM = minutesSinceMidnight(now) - offsetMinutes;
   const startM = endM - minutes;
-  let sum = 0;
-  let count = 0;
+  const pts = [];
 
-  // Iterate through the series to compute sum and count
   for (const p of series || []) {
     const tM = parseTimeToMinutes(p.time);
-    // Check if the time is within the window
+    if (!Number.isFinite(tM)) continue;
     if (tM <= startM || tM > endM) continue;
-    // Only include valid HR values
     if (typeof p.hr === "number") {
-      sum += p.hr;
-      count += 1;
+      pts.push({ x: tM, y: p.hr });
     }
   }
 
-  return count > 0 ? sum / count : null;
+  return pts;
 }
 
 /**
- * Compute relative elevation of current HR vs resting HR baseline from 7-day data.
- * In other words, how much above or below resting HR is the current HR, expressed as a fraction of resting HR.
- *  - 0.0   → at baseline
- *  - 0.2   → 20% above resting
- *  - -0.1  → 10% below resting
- * @param {*} rhr7dJson - JSON object with 7-day resting heart rate data
- * @param {*} hrNow - current heart rate
- * @returns relative elevation of current HR vs resting baseline
+ * Simple mean of HR in a window.
  */
-function computeHrZNow(rhr7dJson, hrNow) {
-  if (hrNow == null) return null;
+function avgWindow(series, now, minutes, offsetMinutes = 0) {
+  const pts = collectHrWindow(series, now, minutes, offsetMinutes);
+  if (pts.length === 0) return null;
 
-  // Extract resting HR values from 7-day JSON
+  let sum = 0;
+  for (const { y } of pts) sum += y;
+  return sum / pts.length;
+}
+
+/**
+ * Min / max / std of HR in a window.
+ */
+function statsWindow(series, now, minutes, offsetMinutes = 0) {
+  const pts = collectHrWindow(series, now, minutes, offsetMinutes);
+  const n = pts.length;
+  if (n === 0) {
+    return { min: null, max: null, std: null };
+  }
+
+  let min = pts[0].y;
+  let max = pts[0].y;
+  let sum = 0;
+
+  for (const { y } of pts) {
+    if (y < min) min = y;
+    if (y > max) max = y;
+    sum += y;
+  }
+
+  const mean = sum / n;
+  let varSum = 0;
+  for (const { y } of pts) {
+    const d = y - mean;
+    varSum += d * d;
+  }
+  const std = n > 1 ? Math.sqrt(varSum / (n - 1)) : 0;
+
+  return { min, max, std };
+}
+
+/**
+ * Regression slope of HR vs. time (minutes) over a window.
+ * Returns slope in "bpm per minute".
+ */
+function slopeWindow(series, now, minutes, offsetMinutes = 0) {
+  const pts = collectHrWindow(series, now, minutes, offsetMinutes);
+  const n = pts.length;
+  if (n < 2) return null;
+
+  const sumX = pts.reduce((a, p) => a + p.x, 0);
+  const sumY = pts.reduce((a, p) => a + p.y, 0);
+  const meanX = sumX / n;
+  const meanY = sumY / n;
+
+  let num = 0;
+  let den = 0;
+  for (const { x, y } of pts) {
+    const dx = x - meanX;
+    num += dx * (y - meanY);
+    den += dx * dx;
+  }
+
+  if (den === 0) return null;
+  return num / den;
+}
+
+/**
+ * Current HR = last sample at or before "now".
+ */
+function currentHr(heartSeries, now) {
+  const nowM = minutesSinceMidnight(now);
+  let best = null;
+  let bestT = -Infinity;
+
+  for (const p of heartSeries || []) {
+    if (typeof p.hr !== "number") continue;
+    const tM = parseTimeToMinutes(p.time);
+    if (!Number.isFinite(tM)) continue;
+    if (tM <= nowM && tM > bestT) {
+      bestT = tM;
+      best = p.hr;
+    }
+  }
+
+  return best;
+}
+
+/**
+ * Compute baseline mean & std of 7-day resting HR.
+ */
+function computeRhrStats(rhr7dJson) {
   const arr = Array.isArray(rhr7dJson?.["activities-heart"])
     ? rhr7dJson["activities-heart"]
     : [];
 
-  // Pull out all restingHeartRate values
-  const values = arr
+  const vals = arr
     .map((e) => e?.value?.restingHeartRate)
     .filter((v) => typeof v === "number");
 
-  // if no valid resting HR values, return null
-  if (values.length < 1) return null;
+  if (vals.length === 0) {
+    return { rhrMean7d: null, rhrStd7d: null };
+  }
 
-  // Compute mean resting HR
-  const n = values.length;
-  const mean = values.reduce((acc, v) => acc + v, 0) / n;
+  const n = vals.length;
+  const mean = vals.reduce((acc, v) => acc + v, 0) / n;
 
-  // Avoid division by zero or negative means
-  if (!mean || mean <= 0) return null;
+  let varSum = 0;
+  for (const v of vals) {
+    const d = v - mean;
+    varSum += d * d;
+  }
+  const std = n > 1 ? Math.sqrt(varSum / (n - 1)) : 0;
 
-  // Relative elevation vs resting baseline
-  return (hrNow - mean) / mean;
+  return { rhrMean7d: mean, rhrStd7d: std };
+}
+
+/**
+ * Relative elevation of HR vs baseline.
+ * Returns null if baseline is missing/invalid.
+ */
+function hrZ(relativeHr, rhrMean7d) {
+  if (relativeHr == null || rhrMean7d == null || rhrMean7d <= 0) {
+    return null;
+  }
+  return (relativeHr - rhrMean7d) / rhrMean7d;
 }
 
 /**
  * Build acute HR features from intraday HR + RHR 7d baseline.
- * - hrAvgLast5m
- * - hrAvgLast15m
- * - hrDelta5m  (last 5m - prior 5m)
- * - hrDelta15m (last 15m - prior 15m)
- * - hrZNow     (z-score vs 7d resting HR baseline)
- * @param {*} heartSeries - time series of HR data
- * @param {*} rhr7dJson - JSON object with 7-day resting heart rate data
- * @param {*} now - current time
- * @returns object with computed HR features
+ *
+ * Returns (all optional if data is sparse):
+ *  - hrNow
+ *  - hrAvgLast5m, hrAvgLast15m, hrAvgLast60m
+ *  - hrMinLast15m, hrMaxLast15m
+ *  - hrDelta5m, hrDelta15m
+ *  - hrSlopeLast30m, hrStdLast30m
+ *  - rhrMean7d, rhrStd7d
+ *  - hrZNow, hrZLast15m
  */
 export function featuresFromHeartIntraday(
   heartSeries,
   rhr7dJson,
   now = dayjs()
 ) {
-  // Compute averages for last windows
+  // window means
   const hrAvgLast5m = avgWindow(heartSeries, now, 5, 0);
   const hrAvgLast15m = avgWindow(heartSeries, now, 15, 0);
+  const hrAvgLast60m = avgWindow(heartSeries, now, 60, 0);
 
-  // Compute prior windows for deltas
+  // prior windows for deltas
   const prior5 = avgWindow(heartSeries, now, 5, 5);
   const prior15 = avgWindow(heartSeries, now, 15, 15);
 
-  // Compute deltas
   const hrDelta5m =
     hrAvgLast5m != null && prior5 != null ? hrAvgLast5m - prior5 : null;
   const hrDelta15m =
     hrAvgLast15m != null && prior15 != null ? hrAvgLast15m - prior15 : null;
 
-  // Compute hrZNow
-  const hrZNow = computeHrZNow(rhr7dJson, hrAvgLast5m ?? hrAvgLast15m ?? null);
+  // range + variability over last 15/30 mins
+  const { min: hrMinLast15m, max: hrMaxLast15m } = statsWindow(
+    heartSeries,
+    now,
+    15,
+    0
+  );
+  const { std: hrStdLast30m } = statsWindow(heartSeries, now, 30, 0);
+
+  // local trend over last 30 mins
+  const hrSlopeLast30m = slopeWindow(heartSeries, now, 30, 0);
+
+  // baseline stats
+  const { rhrMean7d, rhrStd7d } = computeRhrStats(rhr7dJson);
+
+  // current HR and z-scores
+  const hrNow = currentHr(heartSeries, now);
+  const hrZNow = hrZ(hrNow ?? hrAvgLast5m ?? hrAvgLast15m ?? null, rhrMean7d);
+  const hrZLast15m = hrZ(hrAvgLast15m ?? null, rhrMean7d);
 
   return {
+    hrNow,
+
     hrAvgLast5m,
     hrAvgLast15m,
+    hrAvgLast60m,
+
+    hrMinLast15m,
+    hrMaxLast15m,
+
     hrDelta5m,
     hrDelta15m,
+
+    hrSlopeLast30m,
+    hrStdLast30m,
+
+    rhrMean7d,
+    rhrStd7d,
+
     hrZNow,
+    hrZLast15m,
   };
 }

@@ -177,7 +177,7 @@ export async function fetchSteps7d(accessToken: string, endDateISO: string) {
  * cURL:
  curl -H "Authorization: Bearer $FITBIT_TOKEN" \
        -H "Accept: application/json" \
-        "https://api.fitbit.com/1/user/-/activities/active-zone-minutes/date/2025-11-19/1d/15min.json"
+        "https://api.fitbit.com/1/user/-/activities/active-zone-minutes/date/2025-11-19/1d/1min.json"
  *
  * Raw response shape (simplified):
  * {
@@ -199,7 +199,7 @@ export async function fetchSteps7d(accessToken: string, endDateISO: string) {
  *   Array<{ time: string; activeZoneMinutes: number }>
  */
 export async function fetchAzmIntraday(accessToken: string, dateISO: string) {
-  const url = `https://api.fitbit.com/1/user/-/activities/active-zone-minutes/date/${dateISO}/1d/15min.json`;
+  const url = `https://api.fitbit.com/1/user/-/activities/active-zone-minutes/date/${dateISO}/1d/1min.json`;
 
   const r = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
