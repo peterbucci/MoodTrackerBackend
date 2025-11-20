@@ -322,14 +322,7 @@ export async function buildAllFeatures({
     // =========================
     // S — Sleep & short-term recovery (last night / recent nights)
     // =========================
-    sleepDurationLastNightHrs: sleepFeats.sleepDurationLastNightHrs,
-    sleepEfficiency: sleepFeats.sleepEfficiency,
-    wasoMinutes: sleepFeats.wasoMinutes,
-    remRatio: sleepFeats.remRatio,
-    deepRatio: sleepFeats.deepRatio,
-    bedtimeStdDev7d: sleepFeats.bedtimeStdDev7d,
-    // notes is a free-form descriptor array like ["late bedtime", "fragmented"]
-    notes: sleepFeats.notes,
+    ...sleepFeats,
 
     // =========================
     // C — Daily load, baselines & trends (days–weeks)
