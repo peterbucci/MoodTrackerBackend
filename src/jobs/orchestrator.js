@@ -197,6 +197,7 @@ export async function tryFulfillPending(userId) {
         stepsSeries,
         azmSeries,
         heartSeries,
+        breathingSeries,
         dailyJson,
         caloriesJson,
         exerciseJson,

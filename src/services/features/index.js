@@ -24,6 +24,8 @@ import {
 } from "./crossFeatures.js";
 import { featuresFromAzm } from "./azmFeatures.js";
 import { featuresFromHrv } from "./hrvFeatures.js";
+import { featuresFromSpo2 } from "./spo2Features.ts";
+import { featuresFromBreathing } from "./breathingFeatures.ts";
 
 /**
  * Simple composite acute index
@@ -53,6 +55,7 @@ export async function buildAllFeatures({
   stepsSeries,
   azmSeries,
   heartSeries, // from fetchHeartIntraday()
+  breathingSeries,
   dailyJson, // from fetchDailySummary()
   caloriesJson, // from fetchCaloriesIntraday()
   exerciseJson, // from fetchMostRecentExercise()
@@ -147,6 +150,9 @@ export async function buildAllFeatures({
     stepsZToday,
     azmToday: dailyFeats.azmToday,
   });
+
+  const spo2Feats = featuresFromSpo2(spo2Daily);
+  const breathingFeats = featuresFromBreathing(breathingSeries, now);
 
   return {
     // =========================
@@ -250,5 +256,8 @@ export async function buildAllFeatures({
     // =========================
     ...recentActivity,
     ...lowSleepHighActivity,
+
+    ...spo2Feats,
+    ...breathingFeats,
   };
 }
