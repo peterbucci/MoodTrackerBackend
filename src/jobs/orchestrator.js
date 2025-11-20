@@ -19,6 +19,7 @@ import {
 } from "../services/fitbit/sleep.ts";
 import {
   fetchSpo2Daily,
+  fetchSpo2Range,
   fetchTempSkinDaily,
 } from "../services/fitbit/health.ts";
 import {
@@ -134,6 +135,7 @@ export async function tryFulfillPending(userId) {
 
       // health
       spo2Daily,
+      spo2History,
       tempSkinDaily,
 
       // nutrition/hydration
@@ -162,6 +164,7 @@ export async function tryFulfillPending(userId) {
 
       // health
       fetchSpo2Daily(accessToken, dateStr),
+      fetchSpo2Range(accessToken, start, end),
       fetchTempSkinDaily(accessToken, dateStr),
 
       // nutrition
@@ -210,6 +213,7 @@ export async function tryFulfillPending(userId) {
         hrvIntradaySeries,
 
         spo2Daily,
+        spo2History,
         tempSkinDaily,
         nutritionDaily,
         waterDaily,

@@ -146,6 +146,7 @@ export async function buildAllFeatures({
   hrvIntradaySeries, // HRV intraday segments
 
   spo2Daily,
+  spo2History,
   tempSkinDaily,
   nutritionDaily,
   waterDaily,
@@ -246,7 +247,7 @@ export async function buildAllFeatures({
     hrZNow: hrFeats.hrZNow,
   });
 
-  const spo2Feats = featuresFromSpo2(spo2Daily);
+  const spo2Feats = featuresFromSpo2(spo2Daily, spo2History);
   const breathingFeats = featuresFromBreathing(breathingSeries, now);
 
   const tempSkinFeats = featuresFromTempSkin(tempSkinDaily);
