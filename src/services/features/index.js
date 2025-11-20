@@ -57,9 +57,18 @@ export async function buildAllFeatures({
   caloriesJson, // from fetchCaloriesIntraday()
   exerciseJson, // from fetchMostRecentExercise()
   sleepJson, // from fetchSleepRange()
-  hrvJson, // from fetchHrvDaily()
   rhr7dJson, // from fetchRestingHr7d()
   steps7dJson, // from fetchSteps7d() for Tier 4
+
+  hrvDailyJson, // ← NEW
+  hrvRangeJson, // ← NEW
+  hrvIntradaySeries, // ← NEW
+
+  spo2Daily,
+  tempSkinDaily,
+  nutritionDaily,
+  waterDaily,
+
   dateISO, // YYYY-MM-DD (for intraday alignment)
   now = dayjs(),
 }) {

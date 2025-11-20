@@ -118,9 +118,9 @@ export async function fetchHrvDaily(accessToken: string, dateISO: string) {
  * HRV summary over a date range.
  *
  * cURL:
- *   curl -H "Authorization: Bearer $FITBIT_TOKEN" \
- *        -H "Accept: application/json" \
- *        "https://api.fitbit.com/1/user/-/hrv/date/2025-11-12/2025-11-19.json"
+  curl -H "Authorization: Bearer $FITBIT_TOKEN" \
+       -H "Accept: application/json" \
+       "https://api.fitbit.com/1/user/-/hrv/date/2025-11-12/2025-11-19.json"
  *
  * Raw response shape (simplified):
  * {

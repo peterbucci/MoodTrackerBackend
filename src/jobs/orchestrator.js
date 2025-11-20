@@ -106,6 +106,9 @@ export async function tryFulfillPending(userId) {
   const accessToken = await getAccessToken(userId);
   let total = 0;
 
+  const start = dayjs(dateStr).subtract(6, "day").format("YYYY-MM-DD");
+  const end = dateStr;
+
   // -------------------------------
   // For each date, fetch Fitbit data and fulfill requests
   // -------------------------------
@@ -145,7 +148,7 @@ export async function tryFulfillPending(userId) {
       // HRV
       fetchHrvDaily(accessToken, dateStr),
       fetchHrvIntraday(accessToken, dateStr),
-      fetchHrvRange(accessToken, dateStr, 7), // ← NEW
+      fetchHrvRange(accessToken, start, end),
 
       // Daily summary + intraday calories + workout
       fetchDailySummary(accessToken, dateStr),
