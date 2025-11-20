@@ -67,6 +67,39 @@ function safeNumber(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
+function splitCaloriesMealsVsSnacks(foods: NormalizedFoodLog[]): {
+  caloriesFromMeals: number | null;
+  caloriesFromSnacks: number | null;
+} {
+  if (!foods || foods.length === 0) {
+    return { caloriesFromMeals: null, caloriesFromSnacks: null };
+  }
+
+  let meals = 0;
+  let snacks = 0;
+
+  for (const f of foods) {
+    const cals = safeNumber(f.calories);
+    if (cals == null) continue;
+
+    const mt = f.mealTypeId ?? null;
+
+    // Meals: 1=Breakfast, 3=Lunch, 5=Dinner
+    if (mt === 1 || mt === 3 || mt === 5) {
+      meals += cals;
+    }
+    // Snacks: 2=Morning Snack, 4=Afternoon Snack, 6=After Dinner, 7=Anytime, or unknown
+    else if (mt === 2 || mt === 4 || mt === 6 || mt === 7 || mt === null) {
+      snacks += cals;
+    }
+  }
+
+  return {
+    caloriesFromMeals: meals,
+    caloriesFromSnacks: snacks,
+  };
+}
+
 /* ---------------------------------------------
    Main feature builder
 --------------------------------------------- */
@@ -103,6 +136,16 @@ export function buildNutritionFeatureBlock(
   const totalProteinGrams = safeNumber(summary?.protein);
   const totalSodiumMg = safeNumber(summary?.sodium);
 
+  // Compute ratio of snack calories to total calories
+  const { caloriesFromMeals, caloriesFromSnacks } =
+    splitCaloriesMealsVsSnacks(foods);
+  const snackCaloriesFraction =
+    totalCaloriesIntake != null &&
+    totalCaloriesIntake > 0 &&
+    caloriesFromSnacks != null
+      ? caloriesFromSnacks / totalCaloriesIntake
+      : null;
+
   // Prefer waterDaily.waterTotal if available, else fallback to summary.water
   const waterFromDaily = safeNumber(waterDaily?.waterTotal);
   const waterFromSummary = safeNumber(summary?.water);
@@ -126,6 +169,9 @@ export function buildNutritionFeatureBlock(
 
   return {
     totalCaloriesIntake,
+    snackCaloriesFraction,
+    caloriesFromMeals,
+    caloriesFromSnacks,
     totalCarbsGrams,
     totalFatGrams,
     totalFiberGrams,

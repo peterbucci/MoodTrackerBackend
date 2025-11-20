@@ -5,9 +5,9 @@ import fetch from "node-fetch";
  * Food logs + nutrition summary for a date.
  *
  * cURL:
- *   curl -H "Authorization: Bearer $FITBIT_TOKEN" \
- *        -H "Accept: application/json" \
- *        "https://api.fitbit.com/1/user/-/foods/log/date/2025-11-19.json"
+    curl -H "Authorization: Bearer $FITBIT_TOKEN" \
+         -H "Accept: application/json" \
+        "https://api.fitbit.com/1/user/-/foods/log/date/2025-11-19.json"
  *
  * Raw response shape (simplified):
  * {
