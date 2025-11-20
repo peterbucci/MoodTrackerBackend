@@ -25,6 +25,7 @@ import { featuresFromBreathing } from "./breathingFeatures.ts";
 import { buildExerciseFeatureBlock } from "./exerciseFeatures.ts";
 import { featuresFromTempSkin } from "./tempFeatures.ts";
 import { buildNutritionFeatureBlock } from "./nutritionFeatures.ts";
+import { buildCompositePsychophysFeatures } from "./compositeFeatures.ts";
 
 /**
  * Simple composite acute index
@@ -151,6 +152,51 @@ export async function buildAllFeatures({
     waterDaily,
     now
   );
+
+  const baseFeatures = {
+    // Time & context
+    hourOfDay: dailyFeats.hourOfDay,
+
+    // Steps
+    stepsLast60m: stepFeats.stepsLast60m,
+    stepsLast30m: stepFeats.stepsLast30m ?? stepFeats.stepsLast60m,
+    sedentaryMinsLast3h,
+
+    // AZM
+    azmToday: dailyFeats.azmToday,
+    azmLast60m: azmFeats.azmLast60m,
+    azmLast30m: azmFeats.azmLast30m,
+
+    // HR
+    hrZNow: hrFeats.hrZNow,
+    hrZLast15m: hrFeats.hrZLast15m,
+    hrDelta5m: hrFeats.hrDelta5m,
+    hrDelta15m: hrFeats.hrDelta15m,
+    hrSlopeLast30m: hrFeats.hrSlopeLast30m,
+
+    // Exercise timing
+    postExerciseWindow90m: exerciseFeats.postExerciseWindow90m,
+    lastExerciseDurationMinutes: exerciseFeats.lastExerciseDurationMinutes,
+    hoursSinceLastExercise:
+      exerciseFeats.timeSinceLastExerciseMin != null
+        ? exerciseFeats.timeSinceLastExerciseMin / 60
+        : null,
+
+    // Sleep & fatigue
+    sleepDebtHrs,
+    sleepDurationLastNightHrs: sleepFeats.sleepDurationLastNightHrs,
+
+    // Personal baselines
+    stepsZToday,
+    lowSleepHighActivityFlagFeature:
+      lowSleepHighActivity.lowSleepHighActivityFlag,
+
+    // Nutrition
+    snackCaloriesFraction: nutritionFeats.snackCaloriesFraction,
+  };
+
+  const compositeFeatures = buildCompositePsychophysFeatures(baseFeatures);
+
   return {
     // =========================
     // A — Acute movement & load (minutes–hours)
@@ -257,5 +303,6 @@ export async function buildAllFeatures({
     ...spo2Feats,
     ...breathingFeats,
     ...nutritionFeats,
+    ...compositeFeatures,
   };
 }
