@@ -204,9 +204,9 @@ export async function tryFulfillPending(userId) {
         rhr7dJson,
         steps7dJson,
 
-        hrvDailyJson, // ← NEW
-        hrvRangeJson, // ← NEW
-        hrvIntradaySeries, // ← NEW
+        hrvDailyJson,
+        hrvRangeJson,
+        hrvIntradaySeries,
 
         spo2Daily,
         tempSkinDaily,

@@ -60,9 +60,9 @@ export async function buildAllFeatures({
   rhr7dJson, // from fetchRestingHr7d()
   steps7dJson, // from fetchSteps7d() for Tier 4
 
-  hrvDailyJson, // ← NEW
-  hrvRangeJson, // ← NEW
-  hrvIntradaySeries, // ← NEW
+  hrvDailyJson, // HRV single-day
+  hrvRangeJson, // HRV multi-day (e.g., 7d)
+  hrvIntradaySeries, // HRV intraday segments
 
   spo2Daily,
   tempSkinDaily,
@@ -77,18 +77,20 @@ export async function buildAllFeatures({
   // Step-derived
   const stepFeats = featuresFromSteps(stepsSeries, now);
   const sedentaryMinsLast3h = sedentaryMinsLast3hFromSteps(stepsSeries, now);
+
+  // AZM-derived
   const azmFeats = featuresFromAzm(azmSeries, now);
   const azmSpike30m = azmFeats.azmSpike30m;
 
-  // hrv features could go here later
+  // HR acute features
+  const hrFeats = featuresFromHeartIntraday(heartSeries, rhr7dJson, now);
+
+  // HRV features
   const hrvFeats = featuresFromHrv(
     hrvDailyJson,
     hrvRangeJson,
     hrvIntradaySeries
   );
-
-  // HR acute features
-  const hrFeats = featuresFromHeartIntraday(heartSeries, rhr7dJson, now);
 
   // Daily summary-derived
   const dailyFeats = featuresFromDailySummary(dailyJson, now);
@@ -105,8 +107,8 @@ export async function buildAllFeatures({
     exerciseJson,
     now
   );
-  // --- Tier 2: Sleep & Short-Term Trends ---
 
+  // --- Tier 2: Sleep & Short-Term Trends ---
   const sleepFeats = featuresFromSleepRange(sleepJson, now);
   const restingHR7dTrend = restingHr7dTrendFromSeries(rhr7dJson);
 
@@ -152,7 +154,7 @@ export async function buildAllFeatures({
     // A — Acute movement & load (minutes–hours)
     // =========================
     ...stepFeats, // stepsLast5m, stepsLast30m, stepsLast60m, stepsLast3h, stepBurst5m, zeroStreakMax60m, stepsSlopeLast60m, stepsAccel5to15m
-    sedentaryMinsLast3h, // minutes fully sedentary in last 3h
+    sedentaryMinsLast3h,
 
     // Real AZM around label
     azmLast30m: azmFeats.azmLast30m,
@@ -161,7 +163,7 @@ export async function buildAllFeatures({
     azmIntensityMinutes60m: azmFeats.azmIntensityMinutes60m,
     azmZeroStreakMax60m: azmFeats.azmZeroStreakMax60m,
     azmSlopeLast60m: azmFeats.azmSlopeLast60m,
-    azmSpike30m, // alias for azmFeats.azmSpike30m
+    azmSpike30m,
 
     // Acute calories / exercise timing
     caloriesOutLast3h,
@@ -200,7 +202,8 @@ export async function buildAllFeatures({
     remRatio: sleepFeats.remRatio,
     deepRatio: sleepFeats.deepRatio,
     bedtimeStdDev7d: sleepFeats.bedtimeStdDev7d,
-    notes: sleepFeats.notes, // array of strings
+    // notes is a free-form descriptor array like ["late bedtime", "fragmented"]
+    notes: sleepFeats.notes,
 
     // =========================
     // C — Daily load, baselines & trends (days–weeks)
@@ -224,17 +227,29 @@ export async function buildAllFeatures({
     sleepDebtHrs,
     recoveryIndex,
 
-    // Zone-specific AZM totals (still more “chronic load” style)
+    // Zone-specific AZM totals (chronic-ish intensity profile)
     azmFatBurnLast30m: azmFeats.azmFatBurnLast30m,
     azmCardioLast30m: azmFeats.azmCardioLast30m,
     azmPeakLast30m: azmFeats.azmPeakLast30m,
+
+    // =========================
+    // S / C / H — HRV & autonomic recovery
+    // =========================
+    hrvRmssdDaily: hrvFeats.hrvRmssdDaily,
+    hrvDeepRmssdDaily: hrvFeats.hrvDeepRmssdDaily,
+    hrvRmssd7dAvg: hrvFeats.hrvRmssd7dAvg,
+    hrvRmssdDeviationFrom7d: hrvFeats.hrvRmssdDeviationFrom7d,
+    hrvIntradayRmssdMean: hrvFeats.hrvIntradayRmssdMean,
+    hrvIntradayRmssdStdDev: hrvFeats.hrvIntradayRmssdStdDev,
+    hrvIntradayLfMean: hrvFeats.hrvIntradayLfMean,
+    hrvIntradayHfMean: hrvFeats.hrvIntradayHfMean,
+    hrvIntradayLfHfRatioMean: hrvFeats.hrvIntradayLfHfRatioMean,
+    hrvIntradayCoverageMean: hrvFeats.hrvIntradayCoverageMean,
 
     // =========================
     // X — Cross-feature interactions / context
     // =========================
     ...recentActivity,
     ...lowSleepHighActivity,
-
-    ...hrvFeats,
   };
 }
