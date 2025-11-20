@@ -5,10 +5,6 @@ import {
 } from "./stepsFeatures.js";
 import { featuresFromDailySummary } from "./dailyFeatures.js";
 import { caloriesOutLast3hFromIntraday } from "./calorieFeatures.js";
-import {
-  timeSinceLastExerciseMinFromList,
-  postExerciseWindow90mFromList,
-} from "./exerciseFeatures.js";
 import { featuresFromSleepRange } from "./sleepFeatures.js";
 import { restingHr7dTrendFromSeries } from "./restingHrFeatures.js";
 import { featuresFromHeartIntraday } from "./hrFeatures.js";
@@ -26,6 +22,8 @@ import { featuresFromAzm } from "./azmFeatures.js";
 import { featuresFromHrv } from "./hrvFeatures.js";
 import { featuresFromSpo2 } from "./spo2Features.ts";
 import { featuresFromBreathing } from "./breathingFeatures.ts";
+import { buildExerciseFeatureBlock } from "./exerciseFeatures.ts";
+import { featuresFromTempSkin } from "./tempSkinFeatures.ts";
 
 /**
  * Simple composite acute index
@@ -100,15 +98,7 @@ export async function buildAllFeatures({
   // Intraday calories 3h
   const caloriesOutLast3h = caloriesOutLast3hFromIntraday(caloriesJson, now);
 
-  // Time since last exercise + 90m post-ex window
-  const timeSinceLastExerciseMin = timeSinceLastExerciseMinFromList(
-    exerciseJson,
-    now
-  );
-  const postExerciseWindow90m = postExerciseWindow90mFromList(
-    exerciseJson,
-    now
-  );
+  const exerciseFeats = buildExerciseFeatureBlock(exerciseJson, now);
 
   // --- Tier 2: Sleep & Short-Term Trends ---
   const sleepFeats = featuresFromSleepRange(sleepJson, now);
@@ -154,6 +144,8 @@ export async function buildAllFeatures({
   const spo2Feats = featuresFromSpo2(spo2Daily);
   const breathingFeats = featuresFromBreathing(breathingSeries, now);
 
+  const tempSkinFeats = featuresFromTempSkin(tempSkinDaily);
+
   return {
     // =========================
     // A — Acute movement & load (minutes–hours)
@@ -172,8 +164,8 @@ export async function buildAllFeatures({
 
     // Acute calories / exercise timing
     caloriesOutLast3h,
-    timeSinceLastExerciseMin,
-    postExerciseWindow90m,
+    ...exerciseFeats,
+    ...tempSkinFeats,
 
     // =========================
     // A — Acute HR / ANS state (minutes–hours)
