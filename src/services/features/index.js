@@ -2,7 +2,6 @@ import dayjs from "dayjs";
 import {
   featuresFromSteps,
   sedentaryMinsLast3hFromSteps,
-  azmSpike30mFromSteps,
 } from "./stepsFeatures.js";
 import { featuresFromDailySummary } from "./dailyFeatures.js";
 import { caloriesOutLast3hFromIntraday } from "./calorieFeatures.js";
@@ -24,6 +23,7 @@ import {
   lowSleepHighActivityFlagFeature,
 } from "./crossFeatures.js";
 import { featuresFromAzm } from "./azmFeatures.js";
+import { featuresFromHrv } from "./hrvFeatures.js";
 
 /**
  * Simple composite acute index
@@ -57,6 +57,7 @@ export async function buildAllFeatures({
   caloriesJson, // from fetchCaloriesIntraday()
   exerciseJson, // from fetchMostRecentExercise()
   sleepJson, // from fetchSleepRange()
+  hrvJson, // from fetchHrvDaily()
   rhr7dJson, // from fetchRestingHr7d()
   steps7dJson, // from fetchSteps7d() for Tier 4
   dateISO, // YYYY-MM-DD (for intraday alignment)
@@ -69,6 +70,13 @@ export async function buildAllFeatures({
   const sedentaryMinsLast3h = sedentaryMinsLast3hFromSteps(stepsSeries, now);
   const azmFeats = featuresFromAzm(azmSeries, now);
   const azmSpike30m = azmFeats.azmSpike30m;
+
+  // hrv features could go here later
+  const hrvFeats = featuresFromHrv(
+    hrvDailyJson,
+    hrvRangeJson,
+    hrvIntradaySeries
+  );
 
   // HR acute features
   const hrFeats = featuresFromHeartIntraday(heartSeries, rhr7dJson, now);
@@ -217,5 +225,7 @@ export async function buildAllFeatures({
     // =========================
     ...recentActivity,
     ...lowSleepHighActivity,
+
+    ...hrvFeats,
   };
 }

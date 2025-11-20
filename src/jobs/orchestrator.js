@@ -101,6 +101,7 @@ export async function tryFulfillPending(userId) {
     if (!groups.has(dateStr)) groups.set(dateStr, []);
     groups.get(dateStr).push(r);
   }
+
   const accessToken = await getAccessToken(userId);
   let total = 0;
 
@@ -113,58 +114,58 @@ export async function tryFulfillPending(userId) {
       heartSeries,
       azmSeries,
       breathingSeries,
-      hrvJson,
+
+      // HRV
+      hrvDailyJson,
+      hrvIntradaySeries,
+      hrvRangeJson,
+
+      // daily + intraday
       dailyJson,
       caloriesJson,
       exerciseJson,
       sleepJson,
       rhr7dJson,
       steps7dJson,
+
+      // health
       spo2Daily,
       tempSkinDaily,
+
+      // nutrition/hydration
       nutritionDaily,
       waterDaily,
-      hrvIntraday,
     ] = await Promise.all([
       fetchStepsIntraday(accessToken, dateStr),
       fetchHeartIntraday(accessToken, dateStr),
       fetchAzmIntraday(accessToken, dateStr),
       fetchBreathingRateIntraday(accessToken, dateStr),
+
+      // HRV
       fetchHrvDaily(accessToken, dateStr),
+      fetchHrvIntraday(accessToken, dateStr),
+      fetchHrvRange(accessToken, dateStr, 7), // ← NEW
+
+      // Daily summary + intraday calories + workout
       fetchDailySummary(accessToken, dateStr),
       fetchCaloriesIntraday(accessToken, dateStr),
       fetchMostRecentExercise(accessToken, dateStr),
+
+      // Sleep
       fetchSleepRange(accessToken, dateStr, 7),
       fetchRestingHr7d(accessToken, dateStr),
       fetchSteps7d(accessToken, dateStr),
+
+      // health
       fetchSpo2Daily(accessToken, dateStr),
       fetchTempSkinDaily(accessToken, dateStr),
+
+      // nutrition
       fetchNutritionDaily(accessToken, dateStr),
       fetchWaterDaily(accessToken, dateStr),
-      fetchHrvIntraday(accessToken, dateStr),
     ]);
 
     for (const req of requests) {
-      // logFetchedFitbitData(dateStr, {
-      //   stepsSeries,
-      //   heartSeries,
-      //   azmSeries,
-      //   breathingSeries,
-      //   hrvJson,
-      //   dailyJson,
-      //   caloriesJson,
-      //   exerciseJson,
-      //   sleepJson,
-      //   rhr7dJson,
-      //   steps7dJson,
-      //   spo2Daily,
-      //   tempSkinDaily,
-      //   nutritionDaily,
-      //   waterDaily,
-      //   hrvIntraday,
-      // });
-
-      // Client-provided features
       let clientFeats = {};
       if (req.clientFeatures) {
         try {
@@ -186,7 +187,8 @@ export async function tryFulfillPending(userId) {
           : dayjs();
 
       const anchor = base.tz(tz);
-      // Fitbit-derived features for this anchor time
+
+      // ---- Build all Fitbit-derived features (now HRV supported)
       const fitbitFeats = await buildAllFeatures({
         stepsSeries,
         azmSeries,
@@ -197,18 +199,26 @@ export async function tryFulfillPending(userId) {
         sleepJson,
         rhr7dJson,
         steps7dJson,
+
+        hrvDailyJson, // ← NEW
+        hrvRangeJson, // ← NEW
+        hrvIntradaySeries, // ← NEW
+
+        spo2Daily,
+        tempSkinDaily,
+        nutritionDaily,
+        waterDaily,
+
         dateISO: dateStr,
         now: anchor,
       });
 
-      // Geo/time/cluster/weather from lat/lon + anchor
       const geoTimeFeats = await buildGeoAndTimeFeatures({
         lat,
         lon,
         anchor,
       });
 
-      // Merge order: client → fitbit → geo/time (geo/time wins on conflicts)
       const mergedFeats = {
         ...fitbitFeats,
         ...restClientFeats,
@@ -226,7 +236,7 @@ export async function tryFulfillPending(userId) {
         data: JSON.stringify(mergedFeats),
       });
 
-      // Persist label linkage if present on request
+      // label?
       maybeSaveLabelForFeature({ req, userId, featureId, nowTs });
 
       fulfillOneRequest.run({ requestId: req.id, featureId });
