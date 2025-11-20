@@ -159,7 +159,7 @@ export async function tryFulfillPending(userId) {
       // Daily summary + intraday calories + workout
       fetchDailySummary(accessToken, dateStr),
       fetchCaloriesIntraday(accessToken, dateStr),
-      fetchMostRecentExercise(accessToken, dateStr),
+      fetchMostRecentExercise(accessToken, anchor.toISOString()),
 
       // Sleep
       fetchSleepRange(accessToken, dateStr, 7),

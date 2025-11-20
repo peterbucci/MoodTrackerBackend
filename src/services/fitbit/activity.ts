@@ -104,9 +104,9 @@ export async function fetchCaloriesIntraday(
  * Most recent logged activity before or on a given date.
  *
  * cURL:
- *   curl -H "Authorization: Bearer $FITBIT_TOKEN" \
- *        -H "Accept: application/json" \
- *        "https://api.fitbit.com/1/user/-/activities/list.json?beforeDate=2025-11-19&sort=desc&offset=0&limit=1"
+  curl -H "Authorization: Bearer $FITBIT_TOKEN" \
+        -H "Accept: application/json" \
+       "https://api.fitbit.com/1/user/-/activities/list.json?beforeDate=2025-11-19&sort=desc&offset=0&limit=1"
  *
  * Raw response shape (simplified):
  * {
