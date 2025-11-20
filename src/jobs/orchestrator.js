@@ -213,7 +213,6 @@ export async function tryFulfillPending(userId) {
         nutritionDaily,
         waterDaily,
 
-        dateISO: dateStr,
         now: anchor,
       });
 

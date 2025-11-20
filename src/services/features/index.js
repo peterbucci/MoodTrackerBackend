@@ -69,7 +69,6 @@ export async function buildAllFeatures({
   nutritionDaily,
   waterDaily,
 
-  dateISO, // YYYY-MM-DD (for intraday alignment)
   now = dayjs(),
 }) {
   // --- Tier 1 & Acute ---
