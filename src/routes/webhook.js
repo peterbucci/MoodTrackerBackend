@@ -4,7 +4,7 @@ import { scheduleCoalesced } from "../jobs/coalesce.js";
 import { config } from "../config/index.js";
 import { logSync } from "../db/queries/sync.js";
 import { pendingCount } from "../db/queries/requests.js";
-import { tryFulfillPending } from "../jobs/orchestrator.js";
+import { tryFulfillPending } from "../jobs/orchestrator.ts";
 import { v4 as uuidv4 } from "uuid";
 
 const router = express.Router();

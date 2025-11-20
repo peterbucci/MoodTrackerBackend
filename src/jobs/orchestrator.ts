@@ -43,7 +43,17 @@ import { buildAllFeatures } from "../services/features/index.js";
 import { buildGeoAndTimeFeatures } from "../services/features/buildGeoAndTimeFeatures.js";
 
 // Helper: persist label if request has one
-function maybeSaveLabelForFeature({ req, userId, featureId, nowTs }) {
+function maybeSaveLabelForFeature({
+  req,
+  userId,
+  featureId,
+  nowTs,
+}: {
+  req: any;
+  userId: string;
+  featureId: string;
+  nowTs: number;
+}) {
   if (!req.label || typeof req.label !== "string" || !req.label.trim()) {
     return;
   }
@@ -64,8 +74,7 @@ function maybeSaveLabelForFeature({ req, userId, featureId, nowTs }) {
   });
 }
 
-export async function tryFulfillPending(userId) {
-  // Fix this
+export async function tryFulfillPending(userId: string) {
   const pc = pendingCount.get(userId)?.c ?? 0;
   if (pc === 0) return { ok: true, didFetch: false, reason: "no-pending" };
 
@@ -76,15 +85,26 @@ export async function tryFulfillPending(userId) {
 
   // -------------------------------
   // Group requests by DATE using SERVER time in user's timezone
+  // BUT keep each request's own anchor + lat/lon
   // -------------------------------
-  const groups = new Map();
+  const groups = new Map<
+    string,
+    Array<{
+      req: any;
+      anchor: dayjs.Dayjs;
+      lat?: number;
+      lon?: number;
+    }>
+  >();
 
   for (const r of pending) {
-    let clientFeats = {};
+    let clientFeats: any = {};
 
     try {
       clientFeats = JSON.parse(r.clientFeatures) || {};
-    } catch {}
+    } catch {
+      clientFeats = {};
+    }
 
     const { lat, lon, anchorMs } = clientFeats;
 
@@ -102,17 +122,17 @@ export async function tryFulfillPending(userId) {
     const dateStr = anchor.format("YYYY-MM-DD");
 
     if (!groups.has(dateStr)) groups.set(dateStr, []);
-    groups.get(dateStr).push(r);
+    groups.get(dateStr)!.push({ req: r, anchor, lat, lon });
   }
 
   const accessToken = await getAccessToken(userId);
   let total = 0;
 
   // -------------------------------
-  // For each date, fetch Fitbit data and fulfill requests
+  // For each date, fetch Fitbit data once
+  // Then, for each request in that date, use its own anchor
   // -------------------------------
-  for (const [dateStr, group] of groups.entries()) {
-    const { anchor: groupAnchor, requests } = group;
+  for (const [dateStr, requestGroup] of groups.entries()) {
     const start = dayjs(dateStr).subtract(6, "day").format("YYYY-MM-DD");
     const end = dateStr;
 
@@ -160,7 +180,8 @@ export async function tryFulfillPending(userId) {
       // Daily summary + intraday calories + workout
       fetchDailySummary(accessToken, dateStr),
       fetchCaloriesIntraday(accessToken, dateStr),
-      fetchMostRecentExercise(accessToken, groupAnchor.toISOString()),
+      // This endpoint is date-based, so dateStr is enough
+      fetchMostRecentExercise(accessToken, dateStr),
 
       // Sleep
       fetchSleepRange(accessToken, dateStr, 7),
@@ -178,8 +199,9 @@ export async function tryFulfillPending(userId) {
       fetchWaterDaily(accessToken, dateStr),
     ]);
 
-    for (const req of requests) {
-      let clientFeats = {};
+    // Now handle each request in this date group using its own anchor
+    for (const { req, anchor, lat, lon } of requestGroup) {
+      let clientFeats: any = {};
       if (req.clientFeatures) {
         try {
           clientFeats = JSON.parse(req.clientFeatures);
@@ -187,21 +209,16 @@ export async function tryFulfillPending(userId) {
           clientFeats = {};
         }
       }
-      const { lat, lon, anchorMs, ...restClientFeats } = clientFeats;
 
-      const tz =
-        typeof lat === "number" && typeof lon === "number"
-          ? tzLookup(lat, lon)
-          : "UTC";
+      // strip off fields we already handled (lat/lon/anchorMs)
+      const {
+        lat: _lat,
+        lon: _lon,
+        anchorMs,
+        ...restClientFeats
+      } = clientFeats;
 
-      const base =
-        typeof anchorMs === "number" && Number.isFinite(anchorMs)
-          ? dayjs(anchorMs)
-          : dayjs();
-
-      const anchor = base.tz(tz);
-
-      // ---- Build all Fitbit-derived features (now HRV supported)
+      // ---- Build all Fitbit-derived features with *per-request* anchor
       const fitbitFeats = await buildAllFeatures({
         stepsSeries,
         azmSeries,
@@ -252,7 +269,6 @@ export async function tryFulfillPending(userId) {
         data: JSON.stringify(mergedFeats),
       });
 
-      // label?
       maybeSaveLabelForFeature({ req, userId, featureId, nowTs });
 
       fulfillOneRequest.run({ requestId: req.id, featureId });
