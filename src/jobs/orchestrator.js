@@ -145,24 +145,24 @@ export async function tryFulfillPending(userId) {
     ]);
 
     for (const req of requests) {
-      logFetchedFitbitData(dateStr, {
-        stepsSeries,
-        heartSeries,
-        azmSeries,
-        breathingSeries,
-        hrvJson,
-        dailyJson,
-        caloriesJson,
-        exerciseJson,
-        sleepJson,
-        rhr7dJson,
-        steps7dJson,
-        spo2Daily,
-        tempSkinDaily,
-        nutritionDaily,
-        waterDaily,
-        hrvIntraday,
-      });
+      // logFetchedFitbitData(dateStr, {
+      //   stepsSeries,
+      //   heartSeries,
+      //   azmSeries,
+      //   breathingSeries,
+      //   hrvJson,
+      //   dailyJson,
+      //   caloriesJson,
+      //   exerciseJson,
+      //   sleepJson,
+      //   rhr7dJson,
+      //   steps7dJson,
+      //   spo2Daily,
+      //   tempSkinDaily,
+      //   nutritionDaily,
+      //   waterDaily,
+      //   hrvIntraday,
+      // });
 
       // Client-provided features
       let clientFeats = {};
@@ -200,7 +200,7 @@ export async function tryFulfillPending(userId) {
         dateISO: dateStr,
         now: anchor,
       });
-
+      console.log("heart", heartSeries);
       // Geo/time/cluster/weather from lat/lon + anchor
       const geoTimeFeats = await buildGeoAndTimeFeatures({
         lat,
