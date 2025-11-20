@@ -59,20 +59,12 @@ export async function buildGeoAndTimeFeatures({ lat, lon, anchor }) {
 
   // 4) Commute flag heuristic
   let commuteFlag = 0;
-  if (clusterKey) {
-    const keyLower = clusterKey.toLowerCase();
-    const isHome = keyLower.includes("home");
-    const onCampus = keyLower.includes("campus");
+  if (!clusterKey) {
     const inMorningCommute = hourOfDay >= 14 && hourOfDay <= 16;
     const inEveningCommute = hourOfDay >= 17 && hourOfDay <= 20;
+    const schoolDays = dayOfWeek < 5 && dayOfWeek > 0;
 
-    if (
-      !isHome &&
-      !onCampus &&
-      (inMorningCommute || inEveningCommute) &&
-      dayOfWeek < 5 &&
-      dayOfWeek > 0
-    ) {
+    if ((inMorningCommute || inEveningCommute) && schoolDays) {
       commuteFlag = 1;
     }
   }
