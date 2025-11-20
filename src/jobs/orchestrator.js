@@ -11,6 +11,7 @@ import {
   fetchRestingHr7d,
   fetchHrvDaily,
   fetchHrvIntraday,
+  fetchHrvRange,
 } from "../services/fitbit/heart.ts";
 import {
   fetchSleepRange,
