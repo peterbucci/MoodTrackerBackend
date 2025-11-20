@@ -106,13 +106,13 @@ export async function tryFulfillPending(userId) {
   const accessToken = await getAccessToken(userId);
   let total = 0;
 
-  const start = dayjs(dateStr).subtract(6, "day").format("YYYY-MM-DD");
-  const end = dateStr;
-
   // -------------------------------
   // For each date, fetch Fitbit data and fulfill requests
   // -------------------------------
   for (const [dateStr, requests] of groups.entries()) {
+    const start = dayjs(dateStr).subtract(6, "day").format("YYYY-MM-DD");
+    const end = dateStr;
+
     const [
       stepsSeries,
       heartSeries,
