@@ -151,7 +151,6 @@ export async function tryFulfillPending(userId: string) {
       // daily + intraday
       dailyJson,
       caloriesJson,
-      exerciseJson,
       sleepJson,
       rhr7dJson,
       steps7dJson,
@@ -180,8 +179,6 @@ export async function tryFulfillPending(userId: string) {
       // Daily summary + intraday calories + workout
       fetchDailySummary(accessToken, dateStr),
       fetchCaloriesIntraday(accessToken, dateStr),
-      // This endpoint is date-based, so dateStr is enough
-      fetchMostRecentExercise(accessToken, dateStr),
 
       // Sleep
       fetchSleepRange(accessToken, dateStr, 7),
@@ -199,7 +196,6 @@ export async function tryFulfillPending(userId: string) {
       fetchWaterDaily(accessToken, dateStr),
     ]);
 
-    // Now handle each request in this date group using its own anchor
     for (const { req, anchor, lat, lon } of requestGroup) {
       let clientFeats: any = {};
       if (req.clientFeatures) {
@@ -218,6 +214,12 @@ export async function tryFulfillPending(userId: string) {
         ...restClientFeats
       } = clientFeats;
 
+      // 🔹 Per-request exercise fetch using full timestamp
+      const exerciseJson = await fetchMostRecentExercise(
+        accessToken,
+        anchor.toISOString() // full timestamp, not just dateStr
+      );
+
       // ---- Build all Fitbit-derived features with *per-request* anchor
       const fitbitFeats = await buildAllFeatures({
         stepsSeries,
@@ -227,7 +229,7 @@ export async function tryFulfillPending(userId: string) {
         breathingRangeJson,
         dailyJson,
         caloriesJson,
-        exerciseJson,
+        exerciseJson, // ⬅️ now per-request, not shared
         sleepJson,
         rhr7dJson,
         steps7dJson,
@@ -243,7 +245,7 @@ export async function tryFulfillPending(userId: string) {
         nutritionDaily,
         waterDaily,
 
-        now: anchor,
+        now: anchor, // per-request timestamp
       });
 
       const geoTimeFeats = await buildGeoAndTimeFeatures({
@@ -270,11 +272,9 @@ export async function tryFulfillPending(userId: string) {
       });
 
       maybeSaveLabelForFeature({ req, userId, featureId, nowTs });
-
       fulfillOneRequest.run({ requestId: req.id, featureId });
       total += 1;
     }
   }
-
   return { ok: true, didFetch: true, requestsFulfilled: total };
 }
