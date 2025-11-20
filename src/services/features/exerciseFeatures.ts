@@ -1,4 +1,5 @@
-import dayjs, { Dayjs } from "dayjs";
+import dayjs from "dayjs";
+import type { Dayjs } from "dayjs";
 
 export interface ExerciseSummary {
   logId?: string | number | null;
