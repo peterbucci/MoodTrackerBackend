@@ -193,7 +193,7 @@ export async function buildAllFeatures({
     stepsLast15m: stepFeats.stepsLast15m, // if you don’t have this, use 0 or stepsLast30m
     zeroStreakMax60m: stepFeats.zeroStreakMax60m,
 
-    azmSpike30m,
+    azmSpike30m: azmFeats.azmSpike30m,
     postExerciseWindow90m: exerciseFeats.postExerciseWindow90m,
 
     sleepDurationLastNightHrs: sleepFeats.sleepDurationLastNightHrs,
