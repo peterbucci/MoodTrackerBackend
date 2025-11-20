@@ -23,7 +23,7 @@ import { featuresFromHrv } from "./hrvFeatures.js";
 import { featuresFromSpo2 } from "./spo2Features.ts";
 import { featuresFromBreathing } from "./breathingFeatures.ts";
 import { buildExerciseFeatureBlock } from "./exerciseFeatures.ts";
-import { featuresFromTempSkin } from "./tempSkinFeatures.ts";
+import { featuresFromTempSkin } from "./tempFeatures.ts";
 
 /**
  * Simple composite acute index
