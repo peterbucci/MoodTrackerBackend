@@ -200,7 +200,7 @@ export async function tryFulfillPending(userId) {
         dateISO: dateStr,
         now: anchor,
       });
-      console.log("heart", heartSeries);
+
       // Geo/time/cluster/weather from lat/lon + anchor
       const geoTimeFeats = await buildGeoAndTimeFeatures({
         lat,

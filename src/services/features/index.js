@@ -131,49 +131,91 @@ export async function buildAllFeatures({
   });
 
   return {
-    // Acute + Tier 1
-    ...stepFeats,
-    azmToday: dailyFeats.azmToday,
-    timeSinceLastExerciseMin,
-    sedentaryMinsLast3h,
-    caloriesOutLast3h,
-    caloriesOutToday: dailyFeats.caloriesOutToday,
-    restingHR: dailyFeats.restingHR,
-    hourOfDay: dailyFeats.hourOfDay,
-    dayOfWeek: dailyFeats.dayOfWeek,
-    isWeekend: dailyFeats.isWeekend,
+    // =========================
+    // A — Acute movement & load (minutes–hours)
+    // =========================
+    ...stepFeats, // stepsLast5m, stepsLast30m, stepsLast60m, stepsLast3h, stepBurst5m, zeroStreakMax60m, stepsSlopeLast60m, stepsAccel5to15m
+    sedentaryMinsLast3h, // minutes fully sedentary in last 3h
 
-    // Tier A HR + AZM
+    // Real AZM around label
+    azmLast30m: azmFeats.azmLast30m,
+    azmLast60m: azmFeats.azmLast60m,
+    azmIntensityMinutes30m: azmFeats.azmIntensityMinutes30m,
+    azmIntensityMinutes60m: azmFeats.azmIntensityMinutes60m,
+    azmZeroStreakMax60m: azmFeats.azmZeroStreakMax60m,
+    azmSlopeLast60m: azmFeats.azmSlopeLast60m,
+    azmSpike30m, // alias for azmFeats.azmSpike30m
+
+    // Acute calories / exercise timing
+    caloriesOutLast3h,
+    timeSinceLastExerciseMin,
+    postExerciseWindow90m,
+
+    // =========================
+    // A — Acute HR / ANS state (minutes–hours)
+    // =========================
+    hrNow: hrFeats.hrNow,
     hrAvgLast5m: hrFeats.hrAvgLast5m,
     hrAvgLast15m: hrFeats.hrAvgLast15m,
+    hrAvgLast60m: hrFeats.hrAvgLast60m,
+
+    hrMinLast15m: hrFeats.hrMinLast15m,
+    hrMaxLast15m: hrFeats.hrMaxLast15m,
+
     hrDelta5m: hrFeats.hrDelta5m,
     hrDelta15m: hrFeats.hrDelta15m,
+
+    hrSlopeLast30m: hrFeats.hrSlopeLast30m,
+    hrStdLast30m: hrFeats.hrStdLast30m,
+
     hrZNow: hrFeats.hrZNow,
-    postExerciseWindow90m,
-    azmSpike30m,
+    hrZLast15m: hrFeats.hrZLast15m,
+
+    // Composite “how revved up am I right now?”
     acuteArousalIndex,
 
-    // Tier 2: sleep + trends
+    // =========================
+    // S — Sleep & short-term recovery (last night / recent nights)
+    // =========================
     sleepDurationLastNightHrs: sleepFeats.sleepDurationLastNightHrs,
     sleepEfficiency: sleepFeats.sleepEfficiency,
     wasoMinutes: sleepFeats.wasoMinutes,
     remRatio: sleepFeats.remRatio,
     deepRatio: sleepFeats.deepRatio,
     bedtimeStdDev7d: sleepFeats.bedtimeStdDev7d,
-    restingHR7dTrend,
     notes: sleepFeats.notes, // array of strings
 
-    // --- Tier 4: Personal trends / baselines ---
+    // =========================
+    // C — Daily load, baselines & trends (days–weeks)
+    // =========================
+    // Daily totals / context
+    azmToday: dailyFeats.azmToday,
+    caloriesOutToday: dailyFeats.caloriesOutToday,
+    restingHR: dailyFeats.restingHR,
+    hourOfDay: dailyFeats.hourOfDay,
+    dayOfWeek: dailyFeats.dayOfWeek,
+    isWeekend: dailyFeats.isWeekend,
+
+    // RHR baselines
+    rhrMean7d: hrFeats.rhrMean7d,
+    rhrStd7d: hrFeats.rhrStd7d,
+    restingHR7dTrend,
+
+    // Personal long-term patterns
     stepsZToday,
     activityInertia,
     sleepDebtHrs,
     recoveryIndex,
 
-    // cross features:
+    // Zone-specific AZM totals (still more “chronic load” style)
+    azmFatBurnLast30m: azmFeats.azmFatBurnLast30m,
+    azmCardioLast30m: azmFeats.azmCardioLast30m,
+    azmPeakLast30m: azmFeats.azmPeakLast30m,
+
+    // =========================
+    // X — Cross-feature interactions / context
+    // =========================
     ...recentActivity,
     ...lowSleepHighActivity,
-
-    // Uncategorized:
-    ...azmFeats,
   };
 }
