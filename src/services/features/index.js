@@ -160,7 +160,6 @@ export async function buildAllFeatures({
 
   // AZM-derived
   const azmFeats = featuresFromAzm(azmSeries, now);
-  const azmSpike30m = azmFeats.azmSpike30m;
 
   // HR acute features
   const hrFeats = featuresFromHeartIntraday(heartSeries, rhr7dJson, now);
@@ -308,39 +307,14 @@ export async function buildAllFeatures({
     ...stepFeats, // stepsLast5m, stepsLast30m, stepsLast60m, stepsLast3h, stepBurst5m, zeroStreakMax60m, stepsSlopeLast60m, stepsAccel5to15m
     sedentaryMinsLast3h,
 
-    // Real AZM around label
-    azmLast30m: azmFeats.azmLast30m,
-    azmLast60m: azmFeats.azmLast60m,
-    azmIntensityMinutes30m: azmFeats.azmIntensityMinutes30m,
-    azmIntensityMinutes60m: azmFeats.azmIntensityMinutes60m,
-    azmZeroStreakMax60m: azmFeats.azmZeroStreakMax60m,
-    azmSlopeLast60m: azmFeats.azmSlopeLast60m,
-    azmSpike30m,
+    ...azmFeats,
 
     // Acute calories / exercise timing
     caloriesOutLast3h,
     ...exerciseFeats,
     ...tempSkinFeats,
 
-    // =========================
-    // A — Acute HR / ANS state (minutes–hours)
-    // =========================
-    hrNow: hrFeats.hrNow,
-    hrAvgLast5m: hrFeats.hrAvgLast5m,
-    hrAvgLast15m: hrFeats.hrAvgLast15m,
-    hrAvgLast60m: hrFeats.hrAvgLast60m,
-
-    hrMinLast15m: hrFeats.hrMinLast15m,
-    hrMaxLast15m: hrFeats.hrMaxLast15m,
-
-    hrDelta5m: hrFeats.hrDelta5m,
-    hrDelta15m: hrFeats.hrDelta15m,
-
-    hrSlopeLast30m: hrFeats.hrSlopeLast30m,
-    hrStdLast30m: hrFeats.hrStdLast30m,
-
-    hrZNow: hrFeats.hrZNow,
-    hrZLast15m: hrFeats.hrZLast15m,
+    ...hrFeats,
 
     // Composite “how revved up am I right now?”
     acuteArousalIndex,
@@ -368,9 +342,6 @@ export async function buildAllFeatures({
     dayOfWeek: dailyFeats.dayOfWeek,
     isWeekend: dailyFeats.isWeekend,
 
-    // RHR baselines
-    rhrMean7d: hrFeats.rhrMean7d,
-    rhrStd7d: hrFeats.rhrStd7d,
     restingHR7dTrend,
 
     // Personal long-term patterns
@@ -378,11 +349,6 @@ export async function buildAllFeatures({
     activityInertia,
     sleepDebtHrs,
     recoveryIndex,
-
-    // Zone-specific AZM totals (chronic-ish intensity profile)
-    azmFatBurnLast30m: azmFeats.azmFatBurnLast30m,
-    azmCardioLast30m: azmFeats.azmCardioLast30m,
-    azmPeakLast30m: azmFeats.azmPeakLast30m,
 
     // =========================
     // S / C / H — HRV & autonomic recovery
