@@ -24,6 +24,7 @@ import { featuresFromSpo2 } from "./spo2Features.ts";
 import { featuresFromBreathing } from "./breathingFeatures.ts";
 import { buildExerciseFeatureBlock } from "./exerciseFeatures.ts";
 import { featuresFromTempSkin } from "./tempFeatures.ts";
+import { buildNutritionFeatureBlock } from "./nutritionFeatures.ts";
 
 /**
  * Simple composite acute index
@@ -145,7 +146,11 @@ export async function buildAllFeatures({
   const breathingFeats = featuresFromBreathing(breathingSeries, now);
 
   const tempSkinFeats = featuresFromTempSkin(tempSkinDaily);
-
+  const nutritionFeats = buildNutritionFeatureBlock(
+    nutritionDaily,
+    waterDaily,
+    now
+  );
   return {
     // =========================
     // A — Acute movement & load (minutes–hours)
@@ -251,5 +256,6 @@ export async function buildAllFeatures({
 
     ...spo2Feats,
     ...breathingFeats,
+    ...nutritionFeats,
   };
 }
