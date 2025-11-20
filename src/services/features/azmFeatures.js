@@ -26,6 +26,17 @@ function sumAzmWindow(series, now, minutes, metric) {
   return total;
 }
 
+function sumAzmFullDay(series, metric) {
+  let total = 0;
+  for (const p of series || []) {
+    const v = p[metric];
+    if (typeof v === "number" && Number.isFinite(v)) {
+      total += v;
+    }
+  }
+  return total;
+}
+
 /**
  * Count minutes where any AZM > 0 in window.
  */
@@ -155,6 +166,11 @@ export function featuresFromAzm(series, now = dayjs()) {
     azmFatBurnLast30m: sumAzmWindow(s, now, 30, "fatBurnActiveZoneMinutes"),
     azmCardioLast30m: sumAzmWindow(s, now, 30, "cardioActiveZoneMinutes"),
     azmPeakLast30m: sumAzmWindow(s, now, 30, "peakActiveZoneMinutes"),
+
+    // FULL-DAY zone-minute totals
+    azmFatBurnMinutes: sumAzmFullDay(s, "fatBurnActiveZoneMinutes"),
+    azmCardioMinutes: sumAzmFullDay(s, "cardioActiveZoneMinutes"),
+    azmPeakMinutes: sumAzmFullDay(s, "peakActiveZoneMinutes"),
 
     // intensity minutes
     azmIntensityMinutes30m: countIntensityMinutes(s, now, 30),

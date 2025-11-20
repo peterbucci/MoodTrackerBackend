@@ -197,6 +197,10 @@ export function featuresFromHeartIntraday(
   // local trend over last 30 mins
   const hrSlopeLast30m = slopeWindow(heartSeries, now, 30, 0);
 
+  // 60-minute variability & slope
+  const { std: hrStdLast60m } = statsWindow(heartSeries, now, 60, 0);
+  const hrSlopeLast60m = slopeWindow(heartSeries, now, 60, 0);
+
   // baseline stats
   const { rhrMean7d, rhrStd7d } = computeRhrStats(rhr7dJson);
 
@@ -220,6 +224,9 @@ export function featuresFromHeartIntraday(
 
     hrSlopeLast30m,
     hrStdLast30m,
+
+    hrStdLast60m,
+    hrSlopeLast60m,
 
     rhrMean7d,
     rhrStd7d,

@@ -5,7 +5,7 @@ import {
 } from "./stepsFeatures.js";
 import { featuresFromDailySummary } from "./dailyFeatures.js";
 import { caloriesOutLast3hFromIntraday } from "./calorieFeatures.js";
-import { featuresFromSleepRange } from "./sleepFeatures.js";
+import { featuresFromSleepRange } from "./sleepFeatures.ts";
 import { restingHr7dTrendFromSeries } from "./restingHrFeatures.js";
 import { featuresFromHeartIntraday } from "./hrFeatures.js";
 import {

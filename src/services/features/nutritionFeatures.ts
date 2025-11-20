@@ -100,6 +100,27 @@ function splitCaloriesMealsVsSnacks(foods: NormalizedFoodLog[]): {
   };
 }
 
+function computeCaloriesPerMealAvg(foods: NormalizedFoodLog[]): number | null {
+  if (!foods || foods.length === 0) return null;
+
+  const byMealType = new Map<number, number>();
+
+  for (const f of foods) {
+    const mt = f.mealTypeId;
+    const cals = safeNumber(f.calories);
+    if (typeof mt !== "number" || cals == null) continue;
+
+    const prev = byMealType.get(mt) ?? 0;
+    byMealType.set(mt, prev + cals);
+  }
+
+  const categories = Array.from(byMealType.values());
+  if (categories.length === 0) return null;
+
+  const totalAcrossCategories = categories.reduce((sum, v) => sum + v, 0);
+  return totalAcrossCategories / categories.length;
+}
+
 /* ---------------------------------------------
    Main feature builder
 --------------------------------------------- */
@@ -146,6 +167,8 @@ export function buildNutritionFeatureBlock(
       ? caloriesFromSnacks / totalCaloriesIntake
       : null;
 
+  const caloriesPerMealAvg = computeCaloriesPerMealAvg(foods);
+
   // Prefer waterDaily.waterTotal if available, else fallback to summary.water
   const waterFromDaily = safeNumber(waterDaily?.waterTotal);
   const waterFromSummary = safeNumber(summary?.water);
@@ -179,5 +202,6 @@ export function buildNutritionFeatureBlock(
     totalSodiumMg,
     totalWaterMl,
     mealsLoggedCount,
+    caloriesPerMealAvg,
   };
 }
