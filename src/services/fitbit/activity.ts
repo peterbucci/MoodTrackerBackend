@@ -220,9 +220,20 @@ export async function fetchAzmIntraday(accessToken: string, dateISO: string) {
   return minutes
     .map((d) => ({
       time: d.minute || null,
-      activeZoneMinutes: d.value?.activeZoneMinutes ?? 0,
-      fatBurnActiveZoneMinutes: d.value?.fatBurnActiveZoneMinutes ?? 0,
-      cardioActiveZoneMinutes: d.value?.cardioActiveZoneMinutes ?? 0,
+      activeZoneMinutes:
+        typeof d.value?.activeZoneMinutes === "number"
+          ? d.value.activeZoneMinutes
+          : null,
+
+      fatBurnActiveZoneMinutes:
+        typeof d.value?.fatBurnActiveZoneMinutes === "number"
+          ? d.value.fatBurnActiveZoneMinutes
+          : null,
+
+      cardioActiveZoneMinutes:
+        typeof d.value?.cardioActiveZoneMinutes === "number"
+          ? d.value.cardioActiveZoneMinutes
+          : null,
     }))
     .filter((p) => p.time !== null);
 }

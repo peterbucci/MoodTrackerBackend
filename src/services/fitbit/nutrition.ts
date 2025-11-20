@@ -83,17 +83,20 @@ export async function fetchNutritionDaily(
     mealTypeId: f.loggedFood?.mealTypeId ?? null,
   }));
 
+  const toNumOrNull = (v: any): number | null =>
+    typeof v === "number" && Number.isFinite(v) ? v : null;
+
   return {
     date: dateISO,
     foods: normalizedFoods,
     nutritionSummary: {
-      calories: summary.calories ?? 0,
-      carbs: summary.carbs ?? 0,
-      fat: summary.fat ?? 0,
-      fiber: summary.fiber ?? 0,
-      protein: summary.protein ?? 0,
-      sodium: summary.sodium ?? 0,
-      water: summary.water ?? 0,
+      calories: toNumOrNull(summary.calories),
+      carbs: toNumOrNull(summary.carbs),
+      fat: toNumOrNull(summary.fat),
+      fiber: toNumOrNull(summary.fiber),
+      protein: toNumOrNull(summary.protein),
+      sodium: toNumOrNull(summary.sodium),
+      water: toNumOrNull(summary.water),
     },
   };
 }
@@ -141,9 +144,14 @@ export async function fetchWaterDaily(accessToken: string, dateISO: string) {
     logDate: w.logDate ?? dateISO,
   }));
 
+  const waterTotal =
+    typeof summary.water === "number" && Number.isFinite(summary.water)
+      ? summary.water
+      : null;
+
   return {
     date: dateISO,
     waterLogs: normalizedLogs,
-    waterTotal: summary.water ?? 0,
+    waterTotal,
   };
 }

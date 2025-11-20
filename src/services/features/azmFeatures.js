@@ -71,17 +71,25 @@ function longestNoAzmStreak(series, now, minutes) {
   for (const p of series || []) {
     const tM = parseTimeToMinutes(p.time);
     if (!Number.isFinite(tM)) continue;
+    if (tM <= startM || tM > nowM) continue;
 
-    if (tM > startM && tM <= nowM) {
-      const v = p.activeZoneMinutes ?? 0;
-      if (v === 0) {
-        run += 1;
-        best = Math.max(best, run);
-      } else {
-        run = 0;
-      }
+    const raw = p.activeZoneMinutes;
+
+    // Missing → reset
+    if (raw == null || !Number.isFinite(raw)) {
+      run = 0;
+      continue;
+    }
+
+    // Actual inactivity → continue streak
+    if (raw === 0) {
+      run += 1;
+      best = Math.max(best, run);
+    } else {
+      run = 0;
     }
   }
+
   return best;
 }
 
@@ -95,9 +103,12 @@ function azmSlopeLast60(series, now) {
   const pts = (series || [])
     .map((p) => ({
       x: parseTimeToMinutes(p.time),
-      y: p.activeZoneMinutes ?? 0,
+      y: p.activeZoneMinutes,
     }))
-    .filter((pt) => Number.isFinite(pt.x) && pt.x > startM && pt.x <= nowM);
+    .filter(
+      (pt) =>
+        Number.isFinite(pt.x) && pt.x > startM && pt.x <= nowM && pt.y != null
+    );
 
   if (pts.length < 2) return 0;
 
@@ -132,10 +143,10 @@ function azmSpike30m(series, now) {
   for (const p of series || []) {
     const tM = parseTimeToMinutes(p.time);
     if (!Number.isFinite(tM)) continue;
-
     if (tM <= startM || tM > nowM) continue;
 
-    const v = p.activeZoneMinutes ?? 0;
+    const v = p.activeZoneMinutes;
+    if (typeof v !== "number" || !Number.isFinite(v)) continue;
 
     if (tM > startM && tM <= midM) prev30 += v;
     else if (tM > midM && tM <= nowM) last30 += v;

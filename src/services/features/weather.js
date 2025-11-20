@@ -28,18 +28,36 @@ export async function fetchWeatherAndAqi(lat, lon) {
     const c = weatherJson.current;
     if (!c) return {};
 
-    const tempF = c.temperature_2m ?? null;
-    const windMph = c.wind_speed_10m ?? 0;
-    const humidity = c.relative_humidity_2m ?? 0;
-    const precipMm = c.precipitation ?? null;
+    const tempF =
+      typeof c.temperature_2m === "number" && Number.isFinite(c.temperature_2m)
+        ? c.temperature_2m
+        : null;
 
-    // --- Feels-like calc (heat index / wind chill) ---
+    const windMph =
+      typeof c.wind_speed_10m === "number" && Number.isFinite(c.wind_speed_10m)
+        ? c.wind_speed_10m
+        : null;
+
+    const humidity =
+      typeof c.relative_humidity_2m === "number" &&
+      Number.isFinite(c.relative_humidity_2m)
+        ? c.relative_humidity_2m
+        : null;
+
+    const precipMm =
+      typeof c.precipitation === "number" && Number.isFinite(c.precipitation)
+        ? c.precipitation
+        : null;
+
+    // --- Feels-like calc ---
     let feelsLikeF = tempF;
-    if (tempF !== null) {
-      // Heat index
-      if (tempF >= 80 && humidity >= 40) {
+
+    if (tempF != null) {
+      // Heat index (needs humidity)
+      if (humidity != null && tempF >= 80 && humidity >= 40) {
         const T = tempF;
         const RH = humidity;
+
         feelsLikeF =
           -42.379 +
           2.04901523 * T +
@@ -52,8 +70,8 @@ export async function fetchWeatherAndAqi(lat, lon) {
           0.00000199 * T * T * RH * RH;
       }
 
-      // Wind chill
-      if (tempF <= 50 && windMph >= 3) {
+      // Wind chill (needs wind)
+      if (windMph != null && tempF <= 50 && windMph >= 3) {
         feelsLikeF =
           35.74 +
           0.6215 * tempF -
@@ -64,19 +82,16 @@ export async function fetchWeatherAndAqi(lat, lon) {
 
     // --- AQI ---
     let outdoorAQI = null;
+
     if (airRes.ok) {
       try {
         const airJson = await airRes.json();
         const hours = airJson.hourly?.time;
         const aqiArr = airJson.hourly?.us_aqi;
 
-        if (
-          Array.isArray(hours) &&
-          Array.isArray(aqiArr) &&
-          hours.length &&
-          aqiArr.length
-        ) {
+        if (Array.isArray(hours) && Array.isArray(aqiArr)) {
           const now = Date.now();
+
           let bestIdx = 0;
           let bestDiff = Infinity;
 
@@ -90,13 +105,13 @@ export async function fetchWeatherAndAqi(lat, lon) {
             }
           }
 
-          outdoorAQI = aqiArr[bestIdx] ?? null;
+          const val = aqiArr[bestIdx];
+          outdoorAQI =
+            typeof val === "number" && Number.isFinite(val) ? val : null;
         }
       } catch (err) {
         console.warn("Open-Meteo air-quality parse failed:", err);
       }
-    } else {
-      console.warn(`OpenMeteo AQI HTTP ${airRes.status}`);
     }
 
     return {
