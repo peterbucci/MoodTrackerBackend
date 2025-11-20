@@ -104,3 +104,39 @@ export async function fetchBreathingRateIntraday(
     brLight: value.lightSleepSummary?.breathingRate ?? null,
   };
 }
+
+/**
+ * Normalized result for breathing rate summary for a single date.
+ */
+export interface BrDaily {
+  date: string;
+  brFull?: number | null; // full night breathing rate
+  brDeep?: number | null;
+  brRem?: number | null;
+  brLight?: number | null;
+}
+
+/**
+ * Fetch breathing rate summary for a range of dates.
+ */
+export async function fetchBreathingRateRange(
+  accessToken: string,
+  startDateISO: string,
+  endDateISO: string
+): Promise<BrDaily[]> {
+  const url = `https://api.fitbit.com/1/user/-/br/date/${startDateISO}/${endDateISO}.json`;
+  const r = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!r.ok) {
+    throw new Error(`BreathingRateRange HTTP ${r.status}: ${await r.text()}`);
+  }
+  const arr: any[] = (await r.json()) as any[];
+  return arr.map((e: any) => ({
+    date: e.dateTime,
+    brFull: e.value?.breathingRate ?? null,
+    brDeep: e.value?.deepSleepSummary?.breathingRate ?? null,
+    brRem: e.value?.remSleepSummary?.breathingRate ?? null,
+    brLight: e.value?.lightSleepSummary?.breathingRate ?? null,
+  }));
+}

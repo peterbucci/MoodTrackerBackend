@@ -134,6 +134,7 @@ export async function buildAllFeatures({
   azmSeries,
   heartSeries, // from fetchHeartIntraday()
   breathingSeries,
+  breathingRangeJson,
   dailyJson, // from fetchDailySummary()
   caloriesJson, // from fetchCaloriesIntraday()
   exerciseJson, // from fetchMostRecentExercise()
@@ -148,6 +149,7 @@ export async function buildAllFeatures({
   spo2Daily,
   spo2History,
   tempSkinDaily,
+  tempSkinHistory,
   nutritionDaily,
   waterDaily,
 
@@ -248,9 +250,12 @@ export async function buildAllFeatures({
   });
 
   const spo2Feats = featuresFromSpo2(spo2Daily, spo2History);
-  const breathingFeats = featuresFromBreathing(breathingSeries, now);
+  const breathingFeats = featuresFromBreathing(
+    breathingSeries,
+    breathingRangeJson
+  );
 
-  const tempSkinFeats = featuresFromTempSkin(tempSkinDaily);
+  const tempSkinFeats = featuresFromTempSkin(tempSkinDaily, tempSkinHistory);
   const nutritionFeats = buildNutritionFeatureBlock(
     nutritionDaily,
     waterDaily,

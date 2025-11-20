@@ -16,11 +16,13 @@ import {
 import {
   fetchSleepRange,
   fetchBreathingRateIntraday,
+  fetchBreathingRateRange,
 } from "../services/fitbit/sleep.ts";
 import {
   fetchSpo2Daily,
   fetchSpo2Range,
   fetchTempSkinDaily,
+  fetchTempSkinRange,
 } from "../services/fitbit/health.ts";
 import {
   fetchNutritionDaily,
@@ -39,7 +41,6 @@ import {
 } from "../db/queries/requests.js";
 import { buildAllFeatures } from "../services/features/index.js";
 import { buildGeoAndTimeFeatures } from "../services/features/buildGeoAndTimeFeatures.js";
-import { logFetchedFitbitData } from "../utils/logger.js";
 
 // Helper: persist label if request has one
 function maybeSaveLabelForFeature({ req, userId, featureId, nowTs }) {
@@ -119,6 +120,7 @@ export async function tryFulfillPending(userId) {
       heartSeries,
       azmSeries,
       breathingSeries,
+      breathingRangeJson,
 
       // HRV
       hrvDailyJson,
@@ -137,6 +139,7 @@ export async function tryFulfillPending(userId) {
       spo2Daily,
       spo2History,
       tempSkinDaily,
+      tempSkinHistory,
 
       // nutrition/hydration
       nutritionDaily,
@@ -146,6 +149,7 @@ export async function tryFulfillPending(userId) {
       fetchHeartIntraday(accessToken, dateStr),
       fetchAzmIntraday(accessToken, dateStr),
       fetchBreathingRateIntraday(accessToken, dateStr),
+      fetchBreathingRateRange(accessToken, start, end),
 
       // HRV
       fetchHrvDaily(accessToken, dateStr),
@@ -166,6 +170,7 @@ export async function tryFulfillPending(userId) {
       fetchSpo2Daily(accessToken, dateStr),
       fetchSpo2Range(accessToken, start, end),
       fetchTempSkinDaily(accessToken, dateStr),
+      fetchTempSkinRange(accessToken, start, end),
 
       // nutrition
       fetchNutritionDaily(accessToken, dateStr),
@@ -201,6 +206,7 @@ export async function tryFulfillPending(userId) {
         azmSeries,
         heartSeries,
         breathingSeries,
+        breathingRangeJson,
         dailyJson,
         caloriesJson,
         exerciseJson,
@@ -215,6 +221,7 @@ export async function tryFulfillPending(userId) {
         spo2Daily,
         spo2History,
         tempSkinDaily,
+        tempSkinHistory,
         nutritionDaily,
         waterDaily,
 
