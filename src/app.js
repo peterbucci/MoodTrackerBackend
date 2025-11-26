@@ -7,6 +7,7 @@ import oauthRoutes from "./routes/oauth.js";
 import webhookRoutes from "./routes/webhook.js";
 import featuresRoutes from "./routes/features.js";
 import requestRoutes from "./routes/requests.js";
+import fitbitProxyRouter from "./routes/fitbitProxy.js";
 import { config } from "./config/index.js";
 
 export function createServer() {
@@ -41,6 +42,7 @@ export function createServer() {
   // Your authenticated routes
   app.use(featuresRoutes);
   app.use(requestRoutes);
+  app.use(fitbitProxyRouter);
 
   return app;
 }
