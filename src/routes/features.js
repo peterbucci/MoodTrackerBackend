@@ -13,7 +13,16 @@ const router = express.Router();
 router.get("/features", (req, res) => {
   const row = getAnyUser.get();
   if (!row) return res.json([]);
-  const list = listFeatures.all(row.userId, 50, 0);
+
+  // Parse limit & offset from query, with defaults and caps
+  const rawLimit = parseInt(req.query.limit, 10);
+  const rawOffset = parseInt(req.query.offset, 10);
+
+  const limit =
+    Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 500) : 50;
+  const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+
+  const list = listFeatures.all(row.userId, limit, offset);
   res.json(list);
 });
 
