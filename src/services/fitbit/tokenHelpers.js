@@ -1,6 +1,6 @@
 import fetch from "node-fetch";
 import { config } from "../../config/index.js";
-import { getAnyTokenRow, upsertToken } from "../db/queries/tokens.js";
+import { getAnyTokenRow, upsertToken } from "../../db/queries/tokens.js";
 
 const FITBIT_TOKEN_URL = "https://api.fitbit.com/oauth2/token";
 
