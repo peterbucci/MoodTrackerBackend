@@ -1,5 +1,5 @@
 import express from "express";
-import fetch from "node-fetch"; // or global fetch
+import fetch from "node-fetch";
 import { requireApiKey } from "../middleware/auth.js";
 import { ensureFreshAccessToken } from "../services/fitbit/tokenHelpers.js";
 
