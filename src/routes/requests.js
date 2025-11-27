@@ -123,11 +123,11 @@ router.get("/requests/by-created-at", (req, res) => {
 
   // Normalize to an array
   const rawList = Array.isArray(tsParam) ? tsParam : [tsParam];
-
+  console.log(rawList);
   const timestamps = rawList
     .map((v) => Number(v))
     .filter((v) => Number.isFinite(v));
-
+  console.log(timestamps);
   if (timestamps.length === 0) {
     return res.status(400).json({
       ok: false,
@@ -137,7 +137,7 @@ router.get("/requests/by-created-at", (req, res) => {
   }
 
   const dbRows = listRequestsByCreatedAtBatch(row.userId, timestamps);
-
+  console.log(dbRows);
   const requests = dbRows.map((r) => {
     let clientFeatures = null;
     if (r.clientFeatures) {
@@ -147,6 +147,7 @@ router.get("/requests/by-created-at", (req, res) => {
         clientFeatures = null;
       }
     }
+    console.log(clientFeatures);
     return {
       id: r.id,
       createdAt: r.createdAt,
