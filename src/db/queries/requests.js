@@ -62,3 +62,11 @@ export const listRequests = db.prepare(`
   WHERE userId = ?
   ORDER BY createdAt DESC
 `);
+
+export const listRequestsByCreatedAt = db.prepare(`
+  SELECT *
+  FROM requests
+  WHERE userId = @userId
+    AND createdAt = @createdAt
+  ORDER BY createdAt DESC
+`);

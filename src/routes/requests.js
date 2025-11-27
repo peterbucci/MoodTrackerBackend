@@ -109,4 +109,54 @@ router.get("/requests/all", (req, res) => {
   });
 });
 
+/**
+ * Get requests for the current user filtered by exact createdAt timestamp.
+ */
+router.get("/requests/by-created-at", (req, res) => {
+  const row = getAnyUser.get();
+  if (!row) return res.status(404).json({ error: "no user" });
+
+  const ts = Number(req.query.ts);
+  if (!ts || Number.isNaN(ts)) {
+    return res.status(400).json({
+      ok: false,
+      error:
+        "query param 'ts' (createdAt) required, e.g. /requests/by-created-at?ts=1732748200000",
+    });
+  }
+
+  const rawList = listRequestsByCreatedAt.all({
+    userId: row.userId,
+    createdAt: ts,
+  });
+
+  const requests = rawList.map((r) => {
+    let clientFeatures = null;
+    if (r.clientFeatures) {
+      try {
+        clientFeatures = JSON.parse(r.clientFeatures);
+      } catch {
+        clientFeatures = null;
+      }
+    }
+    return {
+      id: r.id,
+      createdAt: r.createdAt,
+      status: r.status,
+      featureId: r.featureId,
+      source: r.source,
+      label: r.label,
+      labelCategory: r.labelCategory,
+      clientFeatures,
+    };
+  });
+
+  res.json({
+    ok: true,
+    userId: row.userId,
+    count: requests.length,
+    requests,
+  });
+});
+
 export default router;
