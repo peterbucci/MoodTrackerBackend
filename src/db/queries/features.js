@@ -66,8 +66,3 @@ export const getLabelIdForFeature = db.prepare(`
   FROM feature_labels
   WHERE featureId = ?;
 `);
-
-export const deleteRequestById = db.prepare(`
-  DELETE FROM requests
-  WHERE id = ?
-`);

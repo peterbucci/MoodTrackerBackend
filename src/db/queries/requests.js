@@ -62,3 +62,8 @@ export const listRequests = db.prepare(`
   WHERE userId = ?
   ORDER BY createdAt DESC
 `);
+
+export const deleteRequestById = db.prepare(`
+  DELETE FROM requests
+  WHERE id = ?
+`);
