@@ -62,29 +62,3 @@ export const listRequests = db.prepare(`
   WHERE userId = ?
   ORDER BY createdAt DESC
 `);
-
-export const listRequestsByCreatedAt = db.prepare(`
-  SELECT *
-  FROM requests
-  WHERE userId = @userId
-    AND createdAt = @createdAt
-  ORDER BY createdAt DESC
-`);
-
-export function listRequestsByCreatedAtBatch(userId, timestamps) {
-  if (!timestamps || timestamps.length === 0) return [];
-
-  const placeholders = timestamps.map(() => "?").join(", ");
-
-  const stmt = db.prepare(
-    `
-    SELECT *
-    FROM requests
-    WHERE userId = ?
-      AND createdAt IN (${placeholders})
-    ORDER BY createdAt DESC
-    `
-  );
-
-  return stmt.all(userId, ...timestamps);
-}

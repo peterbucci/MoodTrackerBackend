@@ -5,7 +5,7 @@ import {
   insertRequest,
   pendingCount,
   listRequests,
-  listRequestsByCreatedAtBatch,
+  deleteRequestById,
 } from "../db/queries/requests.js";
 
 const router = express.Router();
@@ -111,60 +111,32 @@ router.get("/requests/all", (req, res) => {
 });
 
 /**
- * Get requests for the current user filtered by one or many createdAt timestamps.
- * Example:
- *   /requests/by-created-at?ts=1732748200000&ts=1732748210000
+ * Delete a request by ID.
  */
-router.get("/requests/by-created-at", (req, res) => {
+router.delete("/requests/:id", (req, res) => {
   const row = getAnyUser.get();
   if (!row) return res.status(404).json({ error: "no user" });
 
-  const tsParam = req.query.ts;
+  const id = req.params.id;
+  if (!id) {
+    return res.status(400).json({ ok: false, error: "missing request id" });
+  }
 
-  // Normalize to an array
-  const rawList = Array.isArray(tsParam) ? tsParam : [tsParam];
-  console.log(rawList);
-  const timestamps = rawList
-    .map((v) => Number(v))
-    .filter((v) => Number.isFinite(v));
-  console.log(timestamps);
-  if (timestamps.length === 0) {
-    return res.status(400).json({
+  // Ensure the request belongs to the current user (optional but safer)
+  const owned = listRequests.all(row.userId).find((r) => r.id === id);
+  if (!owned) {
+    return res.status(404).json({
       ok: false,
-      error:
-        "query param 'ts' required (one or many). Example: /requests/by-created-at?ts=1732748200000&ts=1732748210000",
+      error: "request not found or does not belong to user",
     });
   }
 
-  const dbRows = listRequestsByCreatedAtBatch(row.userId, timestamps);
-  console.log(dbRows);
-  const requests = dbRows.map((r) => {
-    let clientFeatures = null;
-    if (r.clientFeatures) {
-      try {
-        clientFeatures = JSON.parse(r.clientFeatures);
-      } catch {
-        clientFeatures = null;
-      }
-    }
-    console.log(clientFeatures);
-    return {
-      id: r.id,
-      createdAt: r.createdAt,
-      status: r.status,
-      featureId: r.featureId,
-      source: r.source,
-      label: r.label,
-      labelCategory: r.labelCategory,
-      clientFeatures,
-    };
-  });
+  const result = deleteRequestById.run(id);
 
-  res.json({
+  return res.json({
     ok: true,
-    userId: row.userId,
-    count: requests.length,
-    requests,
+    deletedId: id,
+    changes: result.changes, // 1 if deleted, 0 if not
   });
 });
 
