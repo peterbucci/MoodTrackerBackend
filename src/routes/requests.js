@@ -6,6 +6,7 @@ import {
   pendingCount,
   listRequests,
   listRequestsByCreatedAt,
+  listRequestsByCreatedAtBatch,
 } from "../db/queries/requests.js";
 
 const router = express.Router();
@@ -132,6 +133,63 @@ router.get("/requests/by-created-at", (req, res) => {
   });
 
   const requests = rawList.map((r) => {
+    let clientFeatures = null;
+    if (r.clientFeatures) {
+      try {
+        clientFeatures = JSON.parse(r.clientFeatures);
+      } catch {
+        clientFeatures = null;
+      }
+    }
+    return {
+      id: r.id,
+      createdAt: r.createdAt,
+      status: r.status,
+      featureId: r.featureId,
+      source: r.source,
+      label: r.label,
+      labelCategory: r.labelCategory,
+      clientFeatures,
+    };
+  });
+
+  res.json({
+    ok: true,
+    userId: row.userId,
+    count: requests.length,
+    requests,
+  });
+});
+
+/**
+ * Get requests for the current user filtered by one or many createdAt timestamps.
+ * Example:
+ *   /requests/by-created-at?ts=1732748200000&ts=1732748210000
+ */
+router.get("/requests/by-created-at", (req, res) => {
+  const row = getAnyUser.get();
+  if (!row) return res.status(404).json({ error: "no user" });
+
+  const tsParam = req.query.ts;
+
+  // Normalize to an array
+  const rawList = Array.isArray(tsParam) ? tsParam : [tsParam];
+
+  const timestamps = rawList
+    .map((v) => Number(v))
+    .filter((v) => Number.isFinite(v));
+
+  if (timestamps.length === 0) {
+    return res.status(400).json({
+      ok: false,
+      error:
+        "query param 'ts' required (one or many). Example: /requests/by-created-at?ts=1732748200000&ts=1732748210000",
+    });
+  }
+
+  const dbRows = listRequestsByCreatedAtBatch(row.userId, timestamps);
+
+  const requests = dbRows.map((r) => {
     let clientFeatures = null;
     if (r.clientFeatures) {
       try {
