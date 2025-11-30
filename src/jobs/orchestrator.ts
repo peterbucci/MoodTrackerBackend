@@ -31,6 +31,13 @@ import {
 import { getAccessToken } from "../services/fitbit/oauth.js";
 import { insertFeature } from "../db/queries/features.js";
 import { insertLabel, linkFeatureLabel } from "../db/queries/labels.js";
+import {
+  insertFeatureDesktop,
+  insertLabelDesktop,
+  linkFeatureLabelDesktop,
+  upsertFeatureContextDesktop,
+} from "../db/queries/desktop.js";
+import { desktopDb } from "../db/index.js";
 import { v4 as uuidv4 } from "uuid";
 import dayjs from "dayjs";
 import tzLookup from "tz-lookup";
@@ -41,6 +48,7 @@ import {
 } from "../db/queries/requests.js";
 import { buildAllFeatures } from "../services/features/index.js";
 import { buildGeoAndTimeFeatures } from "../services/features/buildGeoAndTimeFeatures.js";
+import { config } from "../config/index.js";
 
 // Helper: persist label if request has one
 function maybeSaveLabelForFeature({
@@ -53,9 +61,9 @@ function maybeSaveLabelForFeature({
   userId: string;
   featureId: string;
   nowTs: number;
-}) {
+}): string | null {
   if (!req.label || typeof req.label !== "string" || !req.label.trim()) {
-    return;
+    return null;
   }
 
   const labelId = uuidv4();
@@ -72,7 +80,72 @@ function maybeSaveLabelForFeature({
     featureId,
     labelId,
   });
+
+  return labelId;
 }
+
+// Dual-write to desktop DB (transactional, best-effort from caller)
+const writeDesktopRecord = desktopDb.transaction(
+  ({
+    featureId,
+    userId,
+    createdAt,
+    source,
+    labelId,
+    label,
+    labelCategory,
+    context,
+  }: {
+    featureId: string;
+    userId: string;
+    createdAt: number;
+    source: string;
+    labelId: string | null;
+    label: string | null;
+    labelCategory: string | null;
+    context: any;
+  }) => {
+    const createdIso = new Date(createdAt).toISOString();
+
+    insertFeatureDesktop.run({
+      id: featureId,
+      user_id: userId,
+      created_at: createdIso,
+      source,
+    });
+
+    if (label && labelId) {
+      insertLabelDesktop.run({
+        id: labelId,
+        user_id: userId,
+        label,
+        category: labelCategory || null,
+        created_at: createdIso,
+      });
+
+      linkFeatureLabelDesktop.run({
+        feature_id: featureId,
+        label_id: labelId,
+      });
+    }
+
+    upsertFeatureContextDesktop.run({
+      feature_id: featureId,
+      calendarBusyNow: context.calendarBusyNow ?? null,
+      lastCalendarEventType: context.lastCalendarEventType ?? null,
+      notificationBurst5m: context.notificationBurst5m ?? null,
+      notificationCount60m: context.notificationCount60m ?? null,
+      daylightNowFlag: context.daylightNowFlag ?? null,
+      daylightMinsRemaining: context.daylightMinsRemaining ?? null,
+      weatherTempF: context.weatherTempF ?? null,
+      weatherFeelsLikeF: context.weatherFeelsLikeF ?? null,
+      weatherPrecipMm: context.weatherPrecipMm ?? null,
+      outdoorAQI: context.outdoorAQI ?? null,
+      lat: context.lat ?? null,
+      lon: context.lon ?? null,
+    });
+  }
+);
 
 export async function tryFulfillPending(userId: string) {
   const pc = pendingCount.get(userId)?.c ?? 0;
@@ -271,7 +344,43 @@ export async function tryFulfillPending(userId: string) {
         data: JSON.stringify(mergedFeats),
       });
 
-      maybeSaveLabelForFeature({ req, userId, featureId, nowTs });
+      const labelId = maybeSaveLabelForFeature({
+        req,
+        userId,
+        featureId,
+        nowTs,
+      });
+
+      if (config.DUAL_WRITE_DESKTOP !== false) {
+        try {
+          writeDesktopRecord({
+            featureId,
+            userId,
+            createdAt: nowTs,
+            source: "phone-request",
+            labelId,
+            label: req.label,
+            labelCategory: req.labelCategory,
+            context: {
+              calendarBusyNow: restClientFeats.calendarBusyNow,
+              lastCalendarEventType: restClientFeats.lastCalendarEventType,
+              notificationBurst5m: restClientFeats.notificationBurst5m,
+              notificationCount60m: restClientFeats.notificationCount60m,
+              daylightNowFlag: geoTimeFeats.daylightNowFlag,
+              daylightMinsRemaining: geoTimeFeats.daylightMinsRemaining,
+              weatherTempF: geoTimeFeats.weatherTempF,
+              weatherFeelsLikeF: geoTimeFeats.weatherFeelsLikeF,
+              weatherPrecipMm: geoTimeFeats.weatherPrecipMm,
+              outdoorAQI: geoTimeFeats.outdoorAQI,
+              lat,
+              lon,
+            },
+          });
+        } catch (err) {
+          console.warn("desktop dual-write failed", err);
+        }
+      }
+
       fulfillOneRequest.run({ requestId: req.id, featureId });
       total += 1;
     }
