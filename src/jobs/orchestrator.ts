@@ -352,6 +352,7 @@ export async function tryFulfillPending(userId: string) {
       });
 
       if (config.DUAL_WRITE_DESKTOP !== false) {
+        console.log("desktop dual-write enabled for feature", featureId);
         try {
           writeDesktopRecord({
             featureId,
