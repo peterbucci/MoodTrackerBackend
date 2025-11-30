@@ -12,4 +12,9 @@ export const config = {
   API_SECRET: process.env.API_SECRET,
   LOCATION_CLUSTERS: process.env.LOCATION_CLUSTERS,
   ORIGIN: process.env.ORIGIN,
+  DESKTOP_DB_PATH: process.env.DESKTOP_DB_PATH,
+  DUAL_WRITE_DESKTOP:
+    process.env.DUAL_WRITE_DESKTOP == null
+      ? true
+      : process.env.DUAL_WRITE_DESKTOP === "true",
 };

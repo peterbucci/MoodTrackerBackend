@@ -8,6 +8,7 @@ import webhookRoutes from "./routes/webhook.js";
 import featuresRoutes from "./routes/features.js";
 import requestRoutes from "./routes/requests.js";
 import fitbitProxyRouter from "./routes/fitbitProxy.js";
+import desktopRoutes from "./routes/desktop.js";
 import { config } from "./config/index.js";
 
 export function createServer() {
@@ -43,6 +44,7 @@ export function createServer() {
   app.use(featuresRoutes);
   app.use(requestRoutes);
   app.use(fitbitProxyRouter);
+  app.use(desktopRoutes);
 
   return app;
 }
