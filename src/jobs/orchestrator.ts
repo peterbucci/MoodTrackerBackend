@@ -321,7 +321,7 @@ export async function tryFulfillPending(userId: string) {
         now: anchor, // per-request timestamp
       });
 
-      const geoTimeFeats = await buildGeoAndTimeFeatures({
+      const geoTimeFeats: Record<string, any> = await buildGeoAndTimeFeatures({
         lat,
         lon,
         anchor,
