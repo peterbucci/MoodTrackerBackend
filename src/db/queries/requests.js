@@ -67,3 +67,8 @@ export const deleteRequestById = db.prepare(`
   DELETE FROM requests
   WHERE id = ?
 `);
+
+export const deleteRequestsByFeature = db.prepare(`
+  DELETE FROM requests
+  WHERE featureId = ? AND userId = ?
+`);

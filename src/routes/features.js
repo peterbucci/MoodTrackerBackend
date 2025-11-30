@@ -7,6 +7,12 @@ import {
   deleteFeatureOnly,
   getLabelIdForFeature,
 } from "../db/queries/features.js";
+import { deleteRequestsByFeature } from "../db/queries/requests.js";
+import {
+  getDesktopLabelIdForFeature,
+  deleteDesktopLabel,
+  deleteDesktopFeatureOnly,
+} from "../db/queries/desktop.js";
 
 const router = express.Router();
 
@@ -91,6 +97,22 @@ router.delete("/features/:id", (req, res) => {
 
   // 4. delete feature
   deleteFeatureOnly.run(featureId, userId);
+
+  // 5. delete related requests
+  deleteRequestsByFeature.run(featureId, userId);
+
+  // 6. best-effort delete from desktop DB mirror
+  try {
+    const dRow = getDesktopLabelIdForFeature.get(featureId);
+    const desktopLabelId = dRow?.label_id || null;
+
+    deleteDesktopFeatureOnly.run(featureId, userId);
+    if (desktopLabelId) {
+      deleteDesktopLabel.run(desktopLabelId, userId);
+    }
+  } catch (err) {
+    console.warn("desktop delete failed", err);
+  }
 
   return res.json({
     ok: true,

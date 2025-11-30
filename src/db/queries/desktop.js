@@ -122,3 +122,17 @@ export const getDesktopFeature = desktopDb.prepare(`
   LEFT JOIN feature_context fc ON fc.feature_id = f.id
   WHERE f.id = ? AND f.user_id = ?
 `);
+
+export const getDesktopLabelIdForFeature = desktopDb.prepare(`
+  SELECT label_id
+  FROM feature_labels
+  WHERE feature_id = ?
+`);
+
+export const deleteDesktopLabel = desktopDb.prepare(`
+  DELETE FROM labels WHERE id = ? AND user_id = ?
+`);
+
+export const deleteDesktopFeatureOnly = desktopDb.prepare(`
+  DELETE FROM features WHERE id = ? AND user_id = ?
+`);
