@@ -235,7 +235,7 @@ export async function tryFulfillPending(userId) {
 
       // nutrition
       fetchNutritionDaily(accessToken, dateStr),
-      fetchWaterDaily(accessToken, start, end),
+      fetchWaterDaily(accessToken, dateStr),
     ]);
 
     // Per-date sleep debug
