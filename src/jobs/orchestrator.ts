@@ -334,12 +334,15 @@ export async function tryFulfillPending(userId: string) {
       };
 
       const featureId = uuidv4();
-      const nowTs = Date.now();
+      const createdAtTs =
+        typeof req.createdAt === "number" && Number.isFinite(req.createdAt)
+          ? req.createdAt
+          : Date.now();
 
       insertFeature.run({
         id: featureId,
         userId,
-        createdAt: nowTs,
+        createdAt: createdAtTs,
         source: "phone-request",
         data: JSON.stringify(mergedFeats),
       });
@@ -348,16 +351,15 @@ export async function tryFulfillPending(userId: string) {
         req,
         userId,
         featureId,
-        nowTs,
+        nowTs: createdAtTs,
       });
 
       if (config.DUAL_WRITE_DESKTOP !== false) {
-        console.log("desktop dual-write enabled for feature", featureId);
         try {
           writeDesktopRecord({
             featureId,
             userId,
-            createdAt: nowTs,
+            createdAt: createdAtTs,
             source: "phone-request",
             labelId,
             label: req.label,
