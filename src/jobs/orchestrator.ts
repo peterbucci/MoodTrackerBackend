@@ -186,8 +186,11 @@ export async function tryFulfillPending(userId: string) {
         ? tzLookup(lat, lon)
         : "UTC";
 
+    // Prefer the server-side request timestamp; fall back to client anchorMs; else now
     const base =
-      typeof anchorMs === "number" && Number.isFinite(anchorMs)
+      typeof r.createdAt === "number" && Number.isFinite(r.createdAt)
+        ? dayjs(r.createdAt)
+        : typeof anchorMs === "number" && Number.isFinite(anchorMs)
         ? dayjs(anchorMs)
         : dayjs();
 
@@ -287,13 +290,13 @@ export async function tryFulfillPending(userId: string) {
         ...restClientFeats
       } = clientFeats;
 
-      // 🔹 Per-request exercise fetch using full timestamp
+      // Per-request exercise fetch using full timestamp
       const exerciseJson = await fetchMostRecentExercise(
         accessToken,
         anchor.format("YYYY-MM-DDTHH:mm:ss.SSS") // no Z, fits Fitbit's pattern
       );
 
-      // ---- Build all Fitbit-derived features with *per-request* anchor
+      // Build all Fitbit-derived features with *per-request* anchor
       const fitbitFeats = await buildAllFeatures({
         stepsSeries,
         azmSeries,
@@ -302,7 +305,7 @@ export async function tryFulfillPending(userId: string) {
         breathingRangeJson,
         dailyJson,
         caloriesJson,
-        exerciseJson, // ⬅️ now per-request, not shared
+        exerciseJson,
         sleepJson,
         rhr7dJson,
         steps7dJson,
@@ -388,5 +391,6 @@ export async function tryFulfillPending(userId: string) {
       total += 1;
     }
   }
+
   return { ok: true, didFetch: true, requestsFulfilled: total };
 }
