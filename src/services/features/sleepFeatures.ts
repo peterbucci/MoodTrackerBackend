@@ -17,17 +17,20 @@ export function featuresFromSleepRange(
   const sleepArr = Array.isArray(sleepJson?.sleep) ? sleepJson.sleep : [];
   const notes: string[] = [];
 
-  // Parse sleep timestamps in the same timezone context as "now" to avoid TZ drift.
+  // Decide how to parse times:
+  // - If we have an explicit tzNameOverride string, use that.
+  // - Otherwise, let dayjs parse the string as-is (including any offset).
+  const hasExplicitTz =
+    typeof tzNameOverride === "string" && tzNameOverride.trim().length > 0;
+  const tzName = hasExplicitTz ? tzNameOverride!.trim() : undefined;
+
   const parseTime = (t: string) => {
-    const tzVal =
-      typeof tzNameOverride === "string" && tzNameOverride.trim()
-        ? tzNameOverride
-        : typeof (now as any)?.tz === "function"
-        ? (now as any).tz()
-        : null;
-    const tzName = typeof tzVal === "string" && tzVal.trim() ? tzVal : "UTC";
-    return dayjs.tz(t, tzName);
+    if (hasExplicitTz && tzName) {
+      return dayjs.tz(t, tzName);
+    }
+    return dayjs(t);
   };
+
   const isValidTime = (t: string) => {
     const d = parseTime(t);
     return d.isValid();
@@ -56,9 +59,11 @@ export function featuresFromSleepRange(
 
   const byEndTime = [...mainSleeps]
     .filter((s) => s?.endTime && isValidTime(s.endTime))
-    .sort((a, b) => parseTime(a.endTime).valueOf() - parseTime(b.endTime).valueOf());
+    .sort(
+      (a, b) => parseTime(a.endTime).valueOf() - parseTime(b.endTime).valueOf()
+    );
 
-  // "Last night" = last main sleep that ended before now
+  // "Last night" = last main sleep that ended at or before `now`
   let lastNight: any = null;
   const candidates = byEndTime.filter((s) => {
     const end = parseTime(s.endTime);
@@ -68,12 +73,14 @@ export function featuresFromSleepRange(
   if (candidates.length) {
     lastNight = candidates[candidates.length - 1];
   } else if (byEndTime.length) {
-    // Fallback: if none ended before "now", take the latest main sleep available
+    // Fallback: if none ended before "now", take the latest main sleep available.
+    // This is a rare edge-case (e.g. future-dated data); it should not apply to normal logs.
     lastNight = byEndTime[byEndTime.length - 1];
     notes.push("used_latest_sleep_fallback");
   } else {
     notes.push("no_last_night_sleep");
   }
+
   if (!lastNight) {
     notes.push("no_last_night_sleep");
   }
@@ -89,7 +96,8 @@ export function featuresFromSleepRange(
 
   if (lastNight) {
     const durationMs = lastNight.duration || 0;
-    sleepDurationLastNightHrs = durationMs / (1000 * 60 * 60);
+    sleepDurationLastNightHrs =
+      durationMs > 0 ? durationMs / (1000 * 60 * 60) : null;
 
     if (typeof lastNight.efficiency === "number") {
       sleepEfficiency = lastNight.efficiency;

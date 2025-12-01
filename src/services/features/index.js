@@ -1,4 +1,10 @@
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc.js";
+import timezone from "dayjs/plugin/timezone.js";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
 import {
   featuresFromSteps,
   sedentaryMinsLast3hFromSteps,
@@ -27,6 +33,11 @@ import { featuresFromTempSkin } from "./tempFeatures.ts";
 import { buildNutritionFeatureBlock } from "./nutritionFeatures.ts";
 import { buildCompositePsychophysFeatures } from "./compositeFeatures.ts";
 import { computeAcuteArousalIndex } from "./computeAcuteArousalIndex.ts";
+
+// Resolve a stable local timezone name ONCE.
+// If anything goes wrong, we just leave it undefined and never force UTC.
+const LOCAL_TZ_NAME =
+  typeof dayjs.tz === "function" ? dayjs.tz.guess() || undefined : undefined;
 
 /**
  * Pure combiner: NO network calls here.
@@ -90,8 +101,9 @@ export async function buildAllFeatures({
   const sleepFeats = featuresFromSleepRange(
     sleepJson,
     now,
-    typeof now.tz === "function" ? now.tz() : null
+    LOCAL_TZ_NAME // <- clean, stable tz; no more weird tz object / UTC fallback
   );
+
   const restingHR7dTrend = restingHr7dTrendFromSeries(rhr7dJson);
 
   // --- Acute composite ---
@@ -101,7 +113,7 @@ export async function buildAllFeatures({
     hrZNow: hrFeats.hrZNow,
 
     stepBurst5m: stepFeats.stepBurst5m,
-    stepsLast15m: stepFeats.stepsLast15m, // if you don’t have this, use 0 or stepsLast30m
+    stepsLast15m: stepFeats.stepsLast15m,
     zeroStreakMax60m: stepFeats.zeroStreakMax60m,
 
     azmSpike30m: azmFeats.azmSpike30m,
@@ -111,15 +123,11 @@ export async function buildAllFeatures({
   });
 
   // --- Tier 4: Personal Trends & Baselines ---
-
-  // 1) stepsZToday + activityInertia from 7d steps timeseries
   const stepsZToday = stepsZTodayFromTimeseries(steps7dJson);
   const activityInertia = activityInertiaFromSteps7d(steps7dJson);
 
-  // 2) sleepDebtHrs from 7d sleep range (reuse same blob)
   const sleepDebtHrs = sleepDebtHrsFromSleepRange(sleepJson, now);
 
-  // 3) recoveryIndex from RHR trend + sleep debt
   const recoveryIndex = recoveryIndexFromSignals({
     restingHR7dTrend,
     sleepDebtHrs,
@@ -218,7 +226,7 @@ export async function buildAllFeatures({
     // =========================
     // A — Acute movement & load (minutes–hours)
     // =========================
-    ...stepFeats, // stepsLast5m, stepsLast30m, stepsLast60m, stepsLast3h, stepBurst5m, zeroStreakMax60m, stepsSlopeLast60m, stepsAccel5to15m
+    ...stepFeats,
     sedentaryMinsLast3h,
 
     ...azmFeats,
@@ -241,7 +249,6 @@ export async function buildAllFeatures({
     // =========================
     // C — Daily load, baselines & trends (days–weeks)
     // =========================
-    // Daily totals / context
     azmToday: dailyFeats.azmToday,
     caloriesOutToday: dailyFeats.caloriesOutToday,
     restingHR: dailyFeats.restingHR,
@@ -251,7 +258,6 @@ export async function buildAllFeatures({
 
     restingHR7dTrend,
 
-    // Personal long-term patterns
     stepsZToday,
     activityInertia,
     sleepDebtHrs,
