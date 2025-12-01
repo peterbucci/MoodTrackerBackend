@@ -87,7 +87,11 @@ export async function buildAllFeatures({
   const exerciseFeats = buildExerciseFeatureBlock(exerciseJson, now);
 
   // --- Tier 2: Sleep & Short-Term Trends ---
-  const sleepFeats = featuresFromSleepRange(sleepJson, now);
+  const sleepFeats = featuresFromSleepRange(
+    sleepJson,
+    now,
+    typeof now.tz === "function" ? now.tz() : null
+  );
   const restingHR7dTrend = restingHr7dTrendFromSeries(rhr7dJson);
 
   // --- Acute composite ---

@@ -9,16 +9,24 @@ dayjs.extend(timezone);
  * Extract "last night" sleep + 7-day bedtime variability from the
  * combined sleep range.
  */
-export function featuresFromSleepRange(sleepJson: any, now = dayjs()) {
+export function featuresFromSleepRange(
+  sleepJson: any,
+  now = dayjs(),
+  tzNameOverride?: string | null
+) {
   const sleepArr = Array.isArray(sleepJson?.sleep) ? sleepJson.sleep : [];
   const notes: string[] = [];
 
   // Parse sleep timestamps in the same timezone context as "now" to avoid TZ drift.
   const parseTime = (t: string) => {
     const tzVal =
-      typeof (now as any)?.tz === "function" ? (now as any).tz() : null;
-    const tzName = typeof tzVal === "string" ? tzVal : null;
-    return tzName ? dayjs.tz(t, tzName) : dayjs(t);
+      typeof tzNameOverride === "string" && tzNameOverride.trim()
+        ? tzNameOverride
+        : typeof (now as any)?.tz === "function"
+        ? (now as any).tz()
+        : null;
+    const tzName = typeof tzVal === "string" && tzVal.trim() ? tzVal : "UTC";
+    return dayjs.tz(t, tzName);
   };
   const isValidTime = (t: string) => {
     const d = parseTime(t);
