@@ -158,10 +158,9 @@ export async function tryFulfillPending(userId) {
         ? tzLookup(lat, lon)
         : "UTC";
 
+    // Always prefer the request timestamp the server already knows
     const base =
-      typeof anchorMs === "number" && Number.isFinite(anchorMs)
-        ? dayjs(anchorMs)
-        : dayjs();
+      typeof r.createdAt === "number" ? dayjs(r.createdAt) : dayjs(anchorMs); // fallback to client anchor if provided
 
     const anchor = base.tz(tz);
     const dateStr = anchor.format("YYYY-MM-DD");
