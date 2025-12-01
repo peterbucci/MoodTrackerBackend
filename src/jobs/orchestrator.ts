@@ -209,13 +209,26 @@ export async function tryFulfillPending(userId: string) {
   // Then, for each request in that date, use its own anchor
   // -------------------------------
   for (const [dateStr, requestGroup] of groups.entries()) {
-    const start = dayjs(dateStr).subtract(6, "day").format("YYYY-MM-DD");
-    const end = dateStr;
+    // "Day" window (for steps, HR, AZM, calories, daily summary, etc.)
+    const dayStart = dayjs(dateStr).subtract(6, "day").format("YYYY-MM-DD");
+    const dayEnd = dateStr;
+
+    // Pick a representative anchor from this group to decide "night" date
+    const sampleAnchor = requestGroup[0].anchor;
+
+    // If anchor is in early morning (< 12:00), treat last night as previous calendar day
+    const nightAnchor =
+      sampleAnchor.hour() < 12 ? sampleAnchor.subtract(1, "day") : sampleAnchor;
+
+    const nightDateStr = nightAnchor.format("YYYY-MM-DD");
+    const nightStart = nightAnchor.subtract(6, "day").format("YYYY-MM-DD");
 
     const [
       stepsSeries,
       heartSeries,
       azmSeries,
+
+      // Breathing
       breathingSeries,
       breathingRangeJson,
 
@@ -241,33 +254,36 @@ export async function tryFulfillPending(userId: string) {
       nutritionDaily,
       waterDaily,
     ] = await Promise.all([
+      // Activity: keyed to "day" date
       fetchStepsIntraday(accessToken, dateStr),
       fetchHeartIntraday(accessToken, dateStr),
       fetchAzmIntraday(accessToken, dateStr),
-      fetchBreathingRateIntraday(accessToken, dateStr),
-      fetchBreathingRateRange(accessToken, start, end),
 
-      // HRV
-      fetchHrvDaily(accessToken, dateStr),
-      fetchHrvIntraday(accessToken, dateStr),
-      fetchHrvRange(accessToken, start, end),
+      // Breathing: keyed to "night" date / window
+      fetchBreathingRateIntraday(accessToken, nightDateStr),
+      fetchBreathingRateRange(accessToken, nightStart, nightDateStr),
 
-      // Daily summary + intraday calories + workout
+      // HRV: nightly/intraday keyed to "night" date / window
+      fetchHrvDaily(accessToken, nightDateStr),
+      fetchHrvIntraday(accessToken, nightDateStr),
+      fetchHrvRange(accessToken, nightStart, nightDateStr),
+
+      // Daily summary + intraday calories + workout (day-aligned)
       fetchDailySummary(accessToken, dateStr),
       fetchCaloriesIntraday(accessToken, dateStr),
 
-      // Sleep
+      // Sleep (7-day range ending on the "day" dateStr)
       fetchSleepRange(accessToken, dateStr, 7),
       fetchRestingHr7d(accessToken, dateStr),
       fetchSteps7d(accessToken, dateStr),
 
-      // health
-      fetchSpo2Daily(accessToken, dateStr),
-      fetchSpo2Range(accessToken, start, end),
-      fetchTempSkinDaily(accessToken, dateStr),
-      fetchTempSkinRange(accessToken, start, end),
+      // Health nightly metrics: keyed to "night" date / window
+      fetchSpo2Daily(accessToken, nightDateStr),
+      fetchSpo2Range(accessToken, nightStart, nightDateStr),
+      fetchTempSkinDaily(accessToken, nightDateStr),
+      fetchTempSkinRange(accessToken, nightStart, nightDateStr),
 
-      // nutrition
+      // nutrition (day-aligned)
       fetchNutritionDaily(accessToken, dateStr),
       fetchWaterDaily(accessToken, dateStr),
     ]);
