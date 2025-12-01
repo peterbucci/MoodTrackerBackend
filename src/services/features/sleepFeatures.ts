@@ -63,25 +63,14 @@ export function featuresFromSleepRange(
       (a, b) => parseTime(a.endTime).valueOf() - parseTime(b.endTime).valueOf()
     );
 
-  // "Last night" = last main sleep that ended at or before `now`
+  // "Last night" = most recent main sleep in the 7-day window.
+  // We already constrained the window via fetchSleepRange(dateStr, 7),
+  // so we don't need extra end <= now filtering that can misfire on timezones.
   let lastNight: any = null;
-  const candidates = byEndTime.filter((s) => {
-    const end = parseTime(s.endTime);
-    return end.isBefore(now) || end.isSame(now);
-  });
 
-  if (candidates.length) {
-    lastNight = candidates[candidates.length - 1];
-  } else if (byEndTime.length) {
-    // Fallback: if none ended before "now", take the latest main sleep available.
-    // This is a rare edge-case (e.g. future-dated data); it should not apply to normal logs.
+  if (byEndTime.length) {
     lastNight = byEndTime[byEndTime.length - 1];
-    notes.push("used_latest_sleep_fallback");
   } else {
-    notes.push("no_last_night_sleep");
-  }
-
-  if (!lastNight) {
     notes.push("no_last_night_sleep");
   }
 
