@@ -5,36 +5,71 @@ import timezone from "dayjs/plugin/timezone.js";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
+type SleepEntry = {
+  dateOfSleep?: string;
+  duration?: number;
+  startTime?: string;
+  endTime?: string;
+  isMainSleep?: boolean;
+  minutesAsleep?: number;
+  minutesAwake?: number;
+  efficiency?: number;
+  levels?: {
+    summary?: {
+      deep?: { minutes?: number };
+      light?: { minutes?: number };
+      rem?: { minutes?: number };
+      wake?: { minutes?: number };
+    };
+  };
+  [k: string]: any;
+};
+
+type NightAggregate = {
+  date: string; // YYYY-MM-DD (night key)
+  startTimes: dayjs.Dayjs[];
+  endTimes: dayjs.Dayjs[];
+  minutesAsleep: number;
+  minutesAwake: number;
+  deepMinutes: number;
+  lightMinutes: number;
+  remMinutes: number;
+};
+
 /**
- * Extract "last night" sleep + 7-day bedtime variability from the
- * combined sleep range.
+ * Extract “last night” sleep + 7-day bedtime variability from the
+ * combined sleep range returned by fetchSleepRange(endDate, 7).
+ *
+ * Assumptions:
+ * - sleepJson.sleep is the raw array from Fitbit’s /sleep/date/start/end.
+ * - Each entry has dateOfSleep, startTime, endTime, minutesAsleep, etc.
+ * - We treat multiple segments with the same dateOfSleep as one “night”.
  */
 export function featuresFromSleepRange(
   sleepJson: any,
-  now = dayjs(),
+  now = dayjs(), // kept for signature compatibility; not used in selection
   tzNameOverride?: string | null
 ) {
-  const sleepArr = Array.isArray(sleepJson?.sleep) ? sleepJson.sleep : [];
+  const sleepArr: SleepEntry[] = Array.isArray(sleepJson?.sleep)
+    ? sleepJson.sleep
+    : [];
   const notes: string[] = [];
 
   // Decide how to parse times:
-  // - If we have an explicit tzNameOverride string, use that.
-  // - Otherwise, let dayjs parse the string as-is (including any offset).
   const hasExplicitTz =
     typeof tzNameOverride === "string" && tzNameOverride.trim().length > 0;
   const tzName = hasExplicitTz ? tzNameOverride!.trim() : undefined;
 
   const parseTime = (t: string) => {
+    if (!t) return dayjs(NaN);
     if (hasExplicitTz && tzName) {
       return dayjs.tz(t, tzName);
     }
     return dayjs(t);
   };
 
-  const isValidTime = (t: string) => {
-    const d = parseTime(t);
-    return d.isValid();
-  };
+  const isValidTime = (t?: string) =>
+    typeof t === "string" && parseTime(t).isValid();
 
   if (!sleepArr.length) {
     notes.push("no_sleep_data_7d");
@@ -52,28 +87,86 @@ export function featuresFromSleepRange(
     };
   }
 
-  // Filter to "main" sleep sessions only if flag exists, else use all
-  const mainSleeps = sleepArr.filter((s: any) =>
+  // ------------------------------------------------------------
+  // 1. Filter to "main" sleeps and aggregate by dateOfSleep
+  // ------------------------------------------------------------
+  const mainSleeps = sleepArr.filter((s) =>
     typeof s.isMainSleep === "boolean" ? s.isMainSleep : true
   );
 
-  const byEndTime = [...mainSleeps]
-    .filter((s) => s?.endTime && isValidTime(s.endTime))
-    .sort(
-      (a, b) => parseTime(a.endTime).valueOf() - parseTime(b.endTime).valueOf()
-    );
-
-  // "Last night" = most recent main sleep in the 7-day window.
-  // We already constrained the window via fetchSleepRange(dateStr, 7),
-  // so we don't need extra end <= now filtering that can misfire on timezones.
-  let lastNight: any = null;
-
-  if (byEndTime.length) {
-    lastNight = byEndTime[byEndTime.length - 1];
-  } else {
-    notes.push("no_last_night_sleep");
+  if (!mainSleeps.length) {
+    notes.push("no_main_sleep_entries");
   }
 
+  const nights = new Map<string, NightAggregate>();
+
+  for (const s of mainSleeps) {
+    const startValid = isValidTime(s.startTime);
+    const endValid = isValidTime(s.endTime);
+    if (!startValid || !endValid) continue;
+
+    const start = parseTime(s.startTime!);
+    const end = parseTime(s.endTime!);
+
+    const nightDate =
+      typeof s.dateOfSleep === "string" && s.dateOfSleep
+        ? s.dateOfSleep
+        : start.format("YYYY-MM-DD");
+
+    const agg =
+      nights.get(nightDate) ||
+      ({
+        date: nightDate,
+        startTimes: [],
+        endTimes: [],
+        minutesAsleep: 0,
+        minutesAwake: 0,
+        deepMinutes: 0,
+        lightMinutes: 0,
+        remMinutes: 0,
+      } as NightAggregate);
+
+    agg.startTimes.push(start);
+    agg.endTimes.push(end);
+
+    // Minutes asleep: prefer minutesAsleep; else derive from levels.summary
+    let minsAsleep = 0;
+    if (typeof s.minutesAsleep === "number") {
+      minsAsleep = s.minutesAsleep;
+    } else if (s.levels?.summary) {
+      const sum = s.levels.summary;
+      minsAsleep =
+        (sum.light?.minutes || 0) +
+        (sum.deep?.minutes || 0) +
+        (sum.rem?.minutes || 0);
+    }
+    agg.minutesAsleep += minsAsleep;
+
+    // Minutes awake: prefer minutesAwake; else use wake minutes
+    let minsAwake = 0;
+    if (typeof s.minutesAwake === "number") {
+      minsAwake = s.minutesAwake;
+    } else if (s.levels?.summary?.wake?.minutes) {
+      minsAwake = s.levels.summary.wake.minutes || 0;
+    }
+    agg.minutesAwake += minsAwake;
+
+    // Stage minutes from levels.summary
+    if (s.levels?.summary) {
+      const sum = s.levels.summary;
+      agg.deepMinutes += sum.deep?.minutes || 0;
+      agg.lightMinutes += sum.light?.minutes || 0;
+      agg.remMinutes += sum.rem?.minutes || 0;
+    }
+
+    nights.set(nightDate, agg);
+  }
+
+  const nightDates = Array.from(nights.keys()).sort(); // YYYY-MM-DD sort works lexicographically
+
+  // ------------------------------------------------------------
+  // 2. Pick "last night" = most recent night in the window
+  // ------------------------------------------------------------
   let sleepDurationLastNightHrs: number | null = null;
   let sleepEfficiency: number | null = null;
   let wasoMinutes: number | null = null;
@@ -83,87 +176,95 @@ export function featuresFromSleepRange(
   let wakeTimeLocalHour: number | null = null;
   let sleepFragmentationScore: number | null = null;
 
-  if (lastNight) {
-    const durationMs = lastNight.duration || 0;
+  if (nightDates.length > 0) {
+    const lastNightDate = nightDates[nightDates.length - 1];
+    const lastNight = nights.get(lastNightDate)!;
+
+    const totalAsleep = lastNight.minutesAsleep;
+    const totalAwake = lastNight.minutesAwake;
+    const totalWindowMinutes =
+      totalAsleep + totalAwake > 0 ? totalAsleep + totalAwake : 0;
+
+    // Duration (hours) – match fetchSleepRange logging: total minutesAsleep per date
     sleepDurationLastNightHrs =
-      durationMs > 0 ? durationMs / (1000 * 60 * 60) : null;
+      totalAsleep > 0 ? totalAsleep / 60.0 : totalWindowMinutes / 60.0 || null;
 
-    if (typeof lastNight.efficiency === "number") {
-      sleepEfficiency = lastNight.efficiency;
+    // Efficiency: asleep / (asleep + awake) * 100
+    if (totalWindowMinutes > 0) {
+      sleepEfficiency = (totalAsleep / totalWindowMinutes) * 100.0;
     }
 
-    // Use minutesAwake as a proxy for WASO
-    if (typeof lastNight.minutesAwake === "number") {
-      wasoMinutes = lastNight.minutesAwake;
+    // WASO = total minutes awake during the night
+    wasoMinutes = totalAwake > 0 ? totalAwake : null;
+
+    // Onset / wake local hours
+    if (lastNight.startTimes.length) {
+      const earliestStart = lastNight.startTimes.reduce((min, d) =>
+        d.isBefore(min) ? d : min
+      );
+      sleepOnsetLocalHour =
+        earliestStart.hour() + earliestStart.minute() / 60.0;
     }
 
-    // Sleep onset / wake time in local hours (e.g., 22.5 = 10:30pm)
-    const start = parseTime(lastNight.startTime);
-    const end = parseTime(lastNight.endTime);
-    if (start.isValid()) {
-      sleepOnsetLocalHour = start.hour() + start.minute() / 60;
-    }
-    if (end.isValid()) {
-      wakeTimeLocalHour = end.hour() + end.minute() / 60;
+    if (lastNight.endTimes.length) {
+      const latestEnd = lastNight.endTimes.reduce((max, d) =>
+        d.isAfter(max) ? d : max
+      );
+      wakeTimeLocalHour = latestEnd.hour() + latestEnd.minute() / 60.0;
     }
 
-    // Ratios from levels.summary if present
-    const levelsSummary = lastNight.levels?.summary || {};
-    const rem = levelsSummary.rem?.minutes ?? null;
-    const deep = levelsSummary.deep?.minutes ?? null;
+    // Stage ratios
     const totalStageMins =
-      (levelsSummary.rem?.minutes || 0) +
-      (levelsSummary.deep?.minutes || 0) +
-      (levelsSummary.light?.minutes || 0);
-
+      lastNight.remMinutes + lastNight.deepMinutes + lastNight.lightMinutes;
     if (totalStageMins > 0) {
-      remRatio = rem != null ? rem / totalStageMins : null;
-      deepRatio = deep != null ? deep / totalStageMins : null;
+      remRatio =
+        lastNight.remMinutes > 0 ? lastNight.remMinutes / totalStageMins : null;
+      deepRatio =
+        lastNight.deepMinutes > 0
+          ? lastNight.deepMinutes / totalStageMins
+          : null;
     }
 
-    // Simple fragmentation score: proportion of time awake during the sleep period (0–1)
-    if (wasoMinutes != null) {
-      let totalWindowMinutes: number | null = null;
-
-      if (typeof lastNight.minutesAsleep === "number") {
-        totalWindowMinutes = lastNight.minutesAsleep + wasoMinutes;
-      } else if (durationMs > 0) {
-        totalWindowMinutes = durationMs / (1000 * 60);
-      }
-
-      if (totalWindowMinutes && totalWindowMinutes > 0) {
-        const ratio = wasoMinutes / totalWindowMinutes;
-        sleepFragmentationScore = Math.min(1, Math.max(0, ratio));
-      }
+    // Fragmentation score: proportion of awake time in the sleep window, clamped to [0,1]
+    if (totalWindowMinutes > 0 && totalAwake > 0) {
+      const ratio = totalAwake / totalWindowMinutes;
+      sleepFragmentationScore = Math.min(1, Math.max(0, ratio));
     }
+  } else {
+    notes.push("no_night_aggregates");
   }
 
-  // Bedtime std dev across 7 days (main sleeps)
-  const bedtimes = byEndTime.map((s) => {
-    const start = parseTime(s.startTime);
-    if (!start.isValid()) return null;
+  // ------------------------------------------------------------
+  // 3. Bedtime std dev across 7 days
+  //    - Use earliest start per night
+  //    - Normalize across midnight: hours < 12 → +24h
+  // ------------------------------------------------------------
+  const bedtimeMinutes: number[] = [];
 
-    // Minutes since local midnight
-    let mins = start.hour() * 60 + start.minute();
+  for (const date of nightDates) {
+    const agg = nights.get(date)!;
+    if (!agg.startTimes.length) continue;
+    const earliestStart = agg.startTimes.reduce((min, d) =>
+      d.isBefore(min) ? d : min
+    );
 
-    // Normalize across midnight:
-    // for "true" bedtimes, anything in the early morning (e.g. 00:30)
-    // is really "late night" of the previous day. Treat hours < 12 as +24h.
+    let mins = earliestStart.hour() * 60 + earliestStart.minute();
+
+    // Normalize: true bedtimes in the early morning (00:30, etc.)
+    // belong to "late night" of the previous day; push into [720, 2880).
     if (mins < 12 * 60) {
-      mins += 24 * 60; // push into [720, 2880)
+      mins += 24 * 60;
     }
-
-    return mins;
-  });
+    bedtimeMinutes.push(mins);
+  }
 
   let bedtimeStdDev7d: number | null = null;
-  const validBedtimes = bedtimes.filter((v) => v != null) as number[];
-  if (validBedtimes.length >= 2) {
+  if (bedtimeMinutes.length >= 2) {
     const mean =
-      validBedtimes.reduce((acc, v) => acc + v, 0) / validBedtimes.length;
+      bedtimeMinutes.reduce((acc, v) => acc + v, 0) / bedtimeMinutes.length;
     const variance =
-      validBedtimes.reduce((acc, v) => acc + (v - mean) * (v - mean), 0) /
-      validBedtimes.length;
+      bedtimeMinutes.reduce((acc, v) => acc + (v - mean) * (v - mean), 0) /
+      bedtimeMinutes.length;
     const stdMinutes = Math.sqrt(variance);
     bedtimeStdDev7d = stdMinutes / 60.0; // hours
   } else {
