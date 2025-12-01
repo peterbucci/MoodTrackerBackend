@@ -127,7 +127,6 @@ const writeDesktopRecord = desktopDb.transaction(
 );
 
 export async function tryFulfillPending(userId) {
-  // Fix this
   const pc = pendingCount.get(userId)?.c ?? 0;
   if (pc === 0) return { ok: true, didFetch: false, reason: "no-pending" };
 
@@ -166,7 +165,7 @@ export async function tryFulfillPending(userId) {
     const dateStr = anchor.format("YYYY-MM-DD");
 
     if (!groups.has(dateStr)) groups.set(dateStr, []);
-    groups.get(dateStr).push({ req: r, anchor, lat, lon });
+    groups.get(dateStr).push({ req: r, anchor, lat, lon, tz });
   }
 
   const accessToken = await getAccessToken(userId);
@@ -236,10 +235,19 @@ export async function tryFulfillPending(userId) {
 
       // nutrition
       fetchNutritionDaily(accessToken, dateStr),
-      fetchWaterDaily(accessToken, dateStr),
+      fetchWaterDaily(accessToken, start, end),
     ]);
 
-    for (const { req, anchor, lat, lon } of requestGroup) {
+    // Per-date sleep debug
+    console.log("DEBUG sleep window", {
+      userId,
+      dateStr,
+      start,
+      end,
+      sleepCount: Array.isArray(sleepJson?.sleep) ? sleepJson.sleep.length : 0,
+    });
+
+    for (const { req, anchor, lat, lon, tz } of requestGroup) {
       let clientFeats = {};
       if (req.clientFeatures) {
         try {
@@ -256,6 +264,27 @@ export async function tryFulfillPending(userId) {
         anchorMs,
         ...restClientFeats
       } = clientFeats;
+
+      // Per-request sleep debug
+      console.log("DEBUG sleep anchor", {
+        userId,
+        requestId: req.id,
+        reqCreatedAt: req.createdAt,
+        tz,
+        anchorIso: anchor.toISOString(),
+        dateStr,
+      });
+
+      console.log(
+        "DEBUG sleep entries",
+        Array.isArray(sleepJson?.sleep)
+          ? sleepJson.sleep.map((s) => ({
+              startTime: s.startTime,
+              endTime: s.endTime,
+              isMainSleep: s.isMainSleep,
+            }))
+          : []
+      );
 
       // Per-request exercise fetch using full timestamp
       const exerciseJson = await fetchMostRecentExercise(
