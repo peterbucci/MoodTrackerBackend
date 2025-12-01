@@ -1,4 +1,9 @@
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc.js";
+import timezone from "dayjs/plugin/timezone.js";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 /**
  * Extract "last night" sleep + 7-day bedtime variability from the
@@ -8,7 +13,11 @@ export function featuresFromSleepRange(sleepJson: any, now = dayjs()) {
   const sleepArr = Array.isArray(sleepJson?.sleep) ? sleepJson.sleep : [];
   const notes: string[] = [];
 
-  const parseTime = (t: string) => dayjs(t);
+  // Parse sleep timestamps in the same timezone context as "now" to avoid TZ drift.
+  const parseTime = (t: string) => {
+    const tz = now.tz?.() ?? null;
+    return tz ? dayjs.tz(t, tz) : dayjs(t);
+  };
   const isValidTime = (t: string) => {
     const d = parseTime(t);
     return d.isValid();
