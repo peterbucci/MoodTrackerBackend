@@ -1,4 +1,3 @@
-// fitbit/nutrition.ts
 import fetch from "node-fetch";
 
 /**

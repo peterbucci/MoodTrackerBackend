@@ -50,6 +50,16 @@ import { buildAllFeatures } from "../services/features/index.js";
 import { buildGeoAndTimeFeatures } from "../services/features/buildGeoAndTimeFeatures.js";
 import { config } from "../config/index.js";
 
+type PendingCountRow = { c: number };
+type PendingRequestRow = {
+  id: string;
+  userId: string;
+  createdAt: number;
+  clientFeatures: string | null;
+  label?: string | null;
+  labelCategory?: string | null;
+};
+
 // Helper: persist label if request has one
 function maybeSaveLabelForFeature({
   req,
@@ -148,10 +158,11 @@ const writeDesktopRecord = desktopDb.transaction(
 );
 
 export async function tryFulfillPending(userId: string) {
-  const pc = pendingCount.get(userId)?.c ?? 0;
+  const pcRow = pendingCount.get(userId) as PendingCountRow | undefined;
+  const pc = pcRow?.c ?? 0;
   if (pc === 0) return { ok: true, didFetch: false, reason: "no-pending" };
 
-  const pending = listPendingDetailed.all(userId);
+  const pending = listPendingDetailed.all(userId) as PendingRequestRow[];
   if (!pending?.length) {
     return { ok: true, didFetch: false, reason: "no-pending" };
   }
@@ -174,7 +185,8 @@ export async function tryFulfillPending(userId: string) {
     let clientFeats: any = {};
 
     try {
-      clientFeats = JSON.parse(r.clientFeatures) || {};
+      const rawClientFeatures = r.clientFeatures ?? "{}";
+      clientFeats = rawClientFeatures ? JSON.parse(rawClientFeatures) : {};
     } catch {
       clientFeats = {};
     }
