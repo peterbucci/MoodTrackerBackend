@@ -37,3 +37,15 @@ export function parseTimeToMinutes(timeStr) {
 export function minutesSinceMidnight(now) {
   return now.hour() * 60 + now.minute() + now.second() / 60;
 }
+
+export function normalizeMinutesForWindow(tM, nowM) {
+  if (!Number.isFinite(tM)) return null;
+
+  // If the intraday point's clock time is "later today" than `now`,
+  // treat it as belonging to the previous calendar day.
+  // This lets rolling windows like "last 60 minutes" cross midnight.
+  if (tM > nowM) {
+    return tM - 1440; // shift into previous day
+  }
+  return tM;
+}

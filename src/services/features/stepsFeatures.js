@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import {
   parseTimeToMinutes,
   minutesSinceMidnight,
+  normalizeMinutesForWindow,
 } from "../../utils/timeUtils.js";
 
 /**
@@ -14,8 +15,9 @@ function sumWindow(series, now, minutes) {
   let s = 0;
 
   for (const p of series || []) {
-    const tM = parseTimeToMinutes(p.time);
-    if (!Number.isFinite(tM)) continue;
+    const raw = parseTimeToMinutes(p.time);
+    const tM = normalizeMinutesForWindow(raw, nowM);
+    if (tM == null) continue;
 
     // strictly (startM, nowM]
     if (tM > startM && tM <= nowM) {
@@ -34,8 +36,9 @@ function maxOneMinInLast(series, now, minutes) {
   let m = 0;
 
   for (const p of series || []) {
-    const tM = parseTimeToMinutes(p.time);
-    if (!Number.isFinite(tM)) continue;
+    const raw = parseTimeToMinutes(p.time);
+    const tM = normalizeMinutesForWindow(raw, nowM);
+    if (tM == null) continue;
 
     if (tM > startM && tM <= nowM) {
       m = Math.max(m, p.steps || 0);
@@ -54,8 +57,9 @@ function longestZeroStreak(series, now, minutes) {
   let best = 0;
 
   for (const p of series || []) {
-    const tM = parseTimeToMinutes(p.time);
-    if (!Number.isFinite(tM)) continue;
+    const raw = parseTimeToMinutes(p.time);
+    const tM = normalizeMinutesForWindow(raw, nowM);
+    if (tM == null) continue;
 
     if (tM > startM && tM <= nowM) {
       if ((p.steps || 0) === 0) {
@@ -110,8 +114,9 @@ export function sedentaryMinsLast3hFromSteps(series, now = dayjs()) {
   let mins = 0;
 
   for (const p of series || []) {
-    const tM = parseTimeToMinutes(p.time);
-    if (!Number.isFinite(tM)) continue;
+    const raw = parseTimeToMinutes(p.time);
+    const tM = normalizeMinutesForWindow(raw, nowM);
+    if (tM == null) continue;
 
     if (tM > startM && tM <= nowM) {
       if ((p.steps || 0) === 0) mins += 1;
@@ -134,8 +139,9 @@ export function azmSpike30mFromSteps(series, now = dayjs()) {
   let activeLast30 = 0;
 
   for (const p of series || []) {
-    const tM = parseTimeToMinutes(p.time);
-    if (!Number.isFinite(tM)) continue;
+    const raw = parseTimeToMinutes(p.time);
+    const tM = normalizeMinutesForWindow(raw, nowM);
+    if (tM == null) continue;
     if (tM <= startM || tM > nowM) continue;
 
     const steps = p.steps || 0;

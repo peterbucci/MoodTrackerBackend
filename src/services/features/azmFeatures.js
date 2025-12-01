@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import {
   parseTimeToMinutes,
   minutesSinceMidnight,
+  normalizeMinutesForWindow,
 } from "../../utils/timeUtils.js";
 
 /**
@@ -15,8 +16,9 @@ function sumAzmWindow(series, now, minutes, metric) {
   let total = 0;
 
   for (const p of series || []) {
-    const tM = parseTimeToMinutes(p.time);
-    if (!Number.isFinite(tM)) continue;
+    const raw = parseTimeToMinutes(p.time);
+    const tM = normalizeMinutesForWindow(raw, nowM);
+    if (tM == null) continue;
 
     if (tM > startM && tM <= nowM) {
       total += p[metric] ?? 0;
@@ -47,8 +49,9 @@ function countIntensityMinutes(series, now, minutes) {
   let c = 0;
 
   for (const p of series || []) {
-    const tM = parseTimeToMinutes(p.time);
-    if (!Number.isFinite(tM)) continue;
+    const raw = parseTimeToMinutes(p.time);
+    const tM = normalizeMinutesForWindow(raw, nowM);
+    if (tM == null) continue;
 
     if (tM > startM && tM <= nowM) {
       const v = p.activeZoneMinutes ?? 0;
@@ -69,8 +72,9 @@ function longestNoAzmStreak(series, now, minutes) {
   let best = 0;
 
   for (const p of series || []) {
-    const tM = parseTimeToMinutes(p.time);
-    if (!Number.isFinite(tM)) continue;
+    const rawTime = parseTimeToMinutes(p.time);
+    const tM = normalizeMinutesForWindow(rawTime, nowM);
+    if (tM == null) continue;
     if (tM <= startM || tM > nowM) continue;
 
     const raw = p.activeZoneMinutes;
@@ -141,8 +145,9 @@ function azmSpike30m(series, now) {
   let last30 = 0;
 
   for (const p of series || []) {
-    const tM = parseTimeToMinutes(p.time);
-    if (!Number.isFinite(tM)) continue;
+    const raw = parseTimeToMinutes(p.time);
+    const tM = normalizeMinutesForWindow(raw, nowM);
+    if (tM == null) continue;
     if (tM <= startM || tM > nowM) continue;
 
     const v = p.activeZoneMinutes;

@@ -18,7 +18,9 @@ export function caloriesOutLast3hFromIntraday(caloriesJson, now = dayjs()) {
   let s = 0;
 
   for (const d of dataset) {
-    const tM = parseTimeToMinutes(d.time);
+    const raw = parseTimeToMinutes(d.time);
+    const tM = normalizeMinutesForWindow(raw, nowM);
+    if (tM == null) continue;
     if (tM > startM && tM <= nowM) {
       s += Number(d.value) || 0;
     }

@@ -153,8 +153,18 @@ export function featuresFromSleepRange(
   const bedtimes = byEndTime.map((s) => {
     const start = parseTime(s.startTime);
     if (!start.isValid()) return null;
-    // minutes since local midnight
-    return start.hour() * 60 + start.minute();
+
+    // Minutes since local midnight
+    let mins = start.hour() * 60 + start.minute();
+
+    // Normalize across midnight:
+    // for "true" bedtimes, anything in the early morning (e.g. 00:30)
+    // is really "late night" of the previous day. Treat hours < 12 as +24h.
+    if (mins < 12 * 60) {
+      mins += 24 * 60; // push into [720, 2880)
+    }
+
+    return mins;
   });
 
   let bedtimeStdDev7d: number | null = null;

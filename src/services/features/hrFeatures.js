@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import {
   parseTimeToMinutes,
   minutesSinceMidnight,
+  normalizeMinutesForWindow,
 } from "../../utils/timeUtils.js";
 
 /**
@@ -13,8 +14,9 @@ function collectHrWindow(series, now, minutes, offsetMinutes = 0) {
   const pts = [];
 
   for (const p of series || []) {
-    const tM = parseTimeToMinutes(p.time);
-    if (!Number.isFinite(tM)) continue;
+    const raw = parseTimeToMinutes(p.time);
+    const tM = normalizeMinutesForWindow(raw, nowM);
+    if (tM == null) continue;
     if (tM <= startM || tM > endM) continue;
     if (typeof p.hr === "number") {
       pts.push({ x: tM, y: p.hr });
@@ -103,8 +105,9 @@ function currentHr(heartSeries, now) {
 
   for (const p of heartSeries || []) {
     if (typeof p.hr !== "number") continue;
-    const tM = parseTimeToMinutes(p.time);
-    if (!Number.isFinite(tM)) continue;
+    const raw = parseTimeToMinutes(p.time);
+    const tM = normalizeMinutesForWindow(raw, nowM);
+    if (tM == null) continue;
     if (tM <= nowM && tM > bestT) {
       bestT = tM;
       best = p.hr;
