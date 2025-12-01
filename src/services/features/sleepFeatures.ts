@@ -15,8 +15,9 @@ export function featuresFromSleepRange(sleepJson: any, now = dayjs()) {
 
   // Parse sleep timestamps in the same timezone context as "now" to avoid TZ drift.
   const parseTime = (t: string) => {
-    const tzName = (now as any)?.$x?.$timezone;
-    return typeof tzName === "string" ? dayjs.tz(t, tzName) : dayjs(t);
+    const tzName =
+      typeof (now as any)?.tz === "function" ? (now as any).tz() : null;
+    return tzName ? dayjs.tz(t, tzName) : dayjs(t);
   };
   const isValidTime = (t: string) => {
     const d = parseTime(t);
