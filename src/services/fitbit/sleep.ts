@@ -50,17 +50,28 @@ export async function fetchSleepRange(
   const body: any = await r.json();
 
   if (Array.isArray(body?.sleep)) {
-    body.sleep.forEach((s: any) => {
+    const totals = new Map<string, number>();
+    for (const s of body.sleep) {
+      if (s?.isMainSleep === false) continue; // ignore naps
+      const minsAsleep =
+        typeof s?.minutesAsleep === "number"
+          ? s.minutesAsleep
+          : s?.levels?.summary
+          ? ["light", "deep", "rem"].reduce(
+              (sum, k) => sum + (s.levels.summary[k]?.minutes || 0),
+              0
+            )
+          : 0;
       const date = s?.dateOfSleep;
-      const hours =
-        typeof s?.duration === "number" ? s.duration / 3_600_000 : null;
-      if (date && hours !== null) {
-        console.log(`[sleep] date=${date} hours=${hours.toFixed(2)}`);
-      }
+      if (!date || !minsAsleep) continue;
+      totals.set(date, (totals.get(date) ?? 0) + minsAsleep);
+    }
+    totals.forEach((mins, date) => {
+      console.log(`[sleep] date=${date} hoursAsleep=${(mins / 60).toFixed(2)}`);
     });
   }
 
-  return r.json();
+  return body;
 }
 
 /**
