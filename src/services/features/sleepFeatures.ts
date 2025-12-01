@@ -8,6 +8,12 @@ export function featuresFromSleepRange(sleepJson: any, now = dayjs()) {
   const sleepArr = Array.isArray(sleepJson?.sleep) ? sleepJson.sleep : [];
   const notes: string[] = [];
 
+  const parseTime = (t: string) => dayjs(t);
+  const isValidTime = (t: string) => {
+    const d = parseTime(t);
+    return d.isValid();
+  };
+
   if (!sleepArr.length) {
     notes.push("no_sleep_data_7d");
     return {
@@ -29,14 +35,25 @@ export function featuresFromSleepRange(sleepJson: any, now = dayjs()) {
     typeof s.isMainSleep === "boolean" ? s.isMainSleep : true
   );
 
-  const byEndTime = [...mainSleeps].sort(
-    (a, b) => dayjs(a.endTime).valueOf() - dayjs(b.endTime).valueOf()
-  );
+  const byEndTime = [...mainSleeps]
+    .filter((s) => s?.endTime && isValidTime(s.endTime))
+    .sort((a, b) => parseTime(a.endTime).valueOf() - parseTime(b.endTime).valueOf());
 
   // "Last night" = last main sleep that ended before now
   let lastNight: any = null;
-  for (const s of byEndTime) {
-    if (dayjs(s.endTime).isBefore(now)) lastNight = s;
+  const candidates = byEndTime.filter((s) => {
+    const end = parseTime(s.endTime);
+    return end.isBefore(now) || end.isSame(now);
+  });
+
+  if (candidates.length) {
+    lastNight = candidates[candidates.length - 1];
+  } else if (byEndTime.length) {
+    // Fallback: if none ended before "now", take the latest main sleep available
+    lastNight = byEndTime[byEndTime.length - 1];
+    notes.push("used_latest_sleep_fallback");
+  } else {
+    notes.push("no_last_night_sleep");
   }
   if (!lastNight) {
     notes.push("no_last_night_sleep");
@@ -65,8 +82,8 @@ export function featuresFromSleepRange(sleepJson: any, now = dayjs()) {
     }
 
     // Sleep onset / wake time in local hours (e.g., 22.5 = 10:30pm)
-    const start = dayjs(lastNight.startTime);
-    const end = dayjs(lastNight.endTime);
+    const start = parseTime(lastNight.startTime);
+    const end = parseTime(lastNight.endTime);
     if (start.isValid()) {
       sleepOnsetLocalHour = start.hour() + start.minute() / 60;
     }
@@ -107,17 +124,20 @@ export function featuresFromSleepRange(sleepJson: any, now = dayjs()) {
 
   // Bedtime std dev across 7 days (main sleeps)
   const bedtimes = byEndTime.map((s) => {
-    const start = dayjs(s.startTime);
+    const start = parseTime(s.startTime);
+    if (!start.isValid()) return null;
     // minutes since local midnight
     return start.hour() * 60 + start.minute();
   });
 
   let bedtimeStdDev7d: number | null = null;
-  if (bedtimes.length >= 2) {
-    const mean = bedtimes.reduce((acc, v) => acc + v, 0) / bedtimes.length;
+  const validBedtimes = bedtimes.filter((v) => v != null) as number[];
+  if (validBedtimes.length >= 2) {
+    const mean =
+      validBedtimes.reduce((acc, v) => acc + v, 0) / validBedtimes.length;
     const variance =
-      bedtimes.reduce((acc, v) => acc + (v - mean) * (v - mean), 0) /
-      bedtimes.length;
+      validBedtimes.reduce((acc, v) => acc + (v - mean) * (v - mean), 0) /
+      validBedtimes.length;
     const stdMinutes = Math.sqrt(variance);
     bedtimeStdDev7d = stdMinutes / 60.0; // hours
   } else {
