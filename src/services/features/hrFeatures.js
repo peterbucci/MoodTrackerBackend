@@ -15,7 +15,7 @@ function collectHrWindow(series, now, minutes, offsetMinutes = 0) {
 
   for (const p of series || []) {
     const raw = parseTimeToMinutes(p.time);
-    const tM = normalizeMinutesForWindow(raw, nowM);
+    const tM = normalizeMinutesForWindow(raw, endM);
     if (tM == null) continue;
     if (tM <= startM || tM > endM) continue;
     if (typeof p.hr === "number") {
