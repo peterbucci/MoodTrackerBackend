@@ -47,6 +47,19 @@ export async function fetchSleepRange(
   if (!r.ok) {
     throw new Error(`Sleep HTTP ${r.status}: ${await r.text()}`);
   }
+  const body: any = await r.json();
+
+  if (Array.isArray(body?.sleep)) {
+    body.sleep.forEach((s: any) => {
+      const date = s?.dateOfSleep;
+      const hours =
+        typeof s?.duration === "number" ? s.duration / 3_600_000 : null;
+      if (date && hours !== null) {
+        console.log(`[sleep] date=${date} hours=${hours.toFixed(2)}`);
+      }
+    });
+  }
+
   return r.json();
 }
 

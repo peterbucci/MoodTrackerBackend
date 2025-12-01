@@ -158,18 +158,14 @@ const writeDesktopRecord = desktopDb.transaction(
 );
 
 export async function tryFulfillPending(userId: string) {
-  const pcRow = pendingCount.get(userId) as PendingCountRow | undefined;
-  const pc = pcRow?.c ?? 0;
-  if (pc === 0) return { ok: true, didFetch: false, reason: "no-pending" };
-
+  // Fetch all pending detailed requests for this user. If none, exit early.
   const pending = listPendingDetailed.all(userId) as PendingRequestRow[];
   if (!pending?.length) {
     return { ok: true, didFetch: false, reason: "no-pending" };
   }
 
   // -------------------------------
-  // Group requests by DATE using SERVER time in user's timezone
-  // BUT keep each request's own anchor + lat/lon
+  // Group requests by DATE in user's timezone but keep each request's own lat/lon
   // -------------------------------
   const groups = new Map<
     string,
@@ -178,6 +174,7 @@ export async function tryFulfillPending(userId: string) {
       anchor: dayjs.Dayjs;
       lat?: number;
       lon?: number;
+      createdAt: number;
     }>
   >();
 
@@ -191,26 +188,30 @@ export async function tryFulfillPending(userId: string) {
       clientFeats = {};
     }
 
-    const { lat, lon, anchorMs } = clientFeats;
+    const { lat, lon } = clientFeats;
+
+    const createdAtTs = r.createdAt;
+    if (typeof createdAtTs !== "number" || !Number.isFinite(createdAtTs)) {
+      return {
+        ok: false,
+        didFetch: false,
+        reason: "invalid-createdAt",
+        requestId: r.id,
+      };
+    }
 
     const tz =
       typeof lat === "number" && typeof lon === "number"
         ? tzLookup(lat, lon)
         : "UTC";
 
-    // Prefer the server-side request timestamp; fall back to client anchorMs; else now
-    const base =
-      typeof r.createdAt === "number" && Number.isFinite(r.createdAt)
-        ? dayjs(r.createdAt)
-        : typeof anchorMs === "number" && Number.isFinite(anchorMs)
-        ? dayjs(anchorMs)
-        : dayjs();
-
-    const anchor = base.tz(tz);
+    const anchor = dayjs(createdAtTs).tz(tz);
     const dateStr = anchor.format("YYYY-MM-DD");
 
     if (!groups.has(dateStr)) groups.set(dateStr, []);
-    groups.get(dateStr)!.push({ req: r, anchor, lat, lon });
+    groups
+      .get(dateStr)!
+      .push({ req: r, anchor, lat, lon, createdAt: createdAtTs });
   }
 
   const accessToken = await getAccessToken(userId);
@@ -221,10 +222,6 @@ export async function tryFulfillPending(userId: string) {
   // Then, for each request in that date, use its own anchor
   // -------------------------------
   for (const [dateStr, requestGroup] of groups.entries()) {
-    // "Day" window (for steps, HR, AZM, calories, daily summary, etc.)
-    const dayStart = dayjs(dateStr).subtract(6, "day").format("YYYY-MM-DD");
-    const dayEnd = dateStr;
-
     // Pick a representative anchor from this group to decide "night" date
     const sampleAnchor = requestGroup[0].anchor;
 
@@ -300,7 +297,7 @@ export async function tryFulfillPending(userId: string) {
       fetchWaterDaily(accessToken, dateStr),
     ]);
 
-    for (const { req, anchor, lat, lon } of requestGroup) {
+    for (const { req, anchor, lat, lon, createdAt } of requestGroup) {
       let clientFeats: any = {};
       if (req.clientFeatures) {
         try {
@@ -314,7 +311,7 @@ export async function tryFulfillPending(userId: string) {
       const {
         lat: _lat,
         lon: _lon,
-        anchorMs,
+        anchorMs: _anchorMs,
         ...restClientFeats
       } = clientFeats;
 
@@ -365,10 +362,7 @@ export async function tryFulfillPending(userId: string) {
       };
 
       const featureId = uuidv4();
-      const createdAtTs =
-        typeof req.createdAt === "number" && Number.isFinite(req.createdAt)
-          ? req.createdAt
-          : Date.now();
+      const createdAtTs = createdAt;
 
       insertFeature.run({
         id: featureId,
