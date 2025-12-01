@@ -10,8 +10,8 @@ import { getAccessToken } from "../src/services/fitbit/oauth.js";
 import { fetchSleepRange } from "../src/services/fitbit/sleep.ts";
 import { featuresFromSleepRange } from "../src/services/features/sleepFeatures.ts";
 
-const LOCAL_TZ_NAME =
-  typeof dayjs.tz === "function" ? dayjs.tz.guess() || undefined : undefined;
+// 🔴 IMPORTANT: set this to YOUR timezone
+const LOCAL_TZ_NAME = "America/New_York"; // <-- change if needed
 
 // Simple cache so we fetch once per date
 const sleepCache = new Map();
@@ -30,7 +30,6 @@ async function main() {
   if (!tokenRow) throw new Error("No token found in DB.");
   const accessToken = await getAccessToken(tokenRow.userId);
 
-  // Pull features and any clientFeatures/lat/lon from requests if present
   const rows = db
     .prepare(
       `
@@ -46,16 +45,21 @@ async function main() {
   );
 
   for (const row of rows) {
-    const anchor = dayjs(row.createdAt);
-    const dateStr = anchor.format("YYYY-MM-DD");
+    // ⬇⬇ FIX: interpret createdAt as UTC, then convert to YOUR timezone
+    const anchorUtc = dayjs.utc(row.createdAt);
+    const anchorLocal = LOCAL_TZ_NAME ? anchorUtc.tz(LOCAL_TZ_NAME) : anchorUtc; // fallback
 
-    // Fetch 7d sleep window ending on this date
+    const dateStr = anchorLocal.format("YYYY-MM-DD");
+
     const sleepJson = await getSleepForDate(dateStr, accessToken);
 
-    // Recompute sleep features for this anchor
-    const sleepFeats = featuresFromSleepRange(sleepJson, anchor, LOCAL_TZ_NAME);
+    // Pass the local anchor + explicit tz into the feature builder
+    const sleepFeats = featuresFromSleepRange(
+      sleepJson,
+      anchorLocal,
+      LOCAL_TZ_NAME
+    );
 
-    // Merge into existing payload
     let existing;
     try {
       existing = JSON.parse(row.data);
@@ -72,7 +76,11 @@ async function main() {
       data: JSON.stringify(updated),
     });
 
-    console.log(`Updated sleep fields for feature ${row.id}`);
+    console.log(
+      `Updated sleep fields for feature ${
+        row.id
+      } using anchor ${anchorLocal.toISOString()}`
+    );
   }
 
   console.log("Done.");
